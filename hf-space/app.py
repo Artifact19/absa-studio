@@ -227,8 +227,13 @@ with gr.Blocks(title="ABSA Studio Inference") as demo:
     d_btn = gr.Button("Analyze Sentiment with ZeroGPU", variant="primary")
     d_btn.click(fn=demo_classify, inputs=[d_text, d_target], outputs=d_out)
 
-app = gr.mount_gradio_app(api, demo, path="/", ssr_mode=False)  # note: API routes registered first
-
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 7860))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    demo.launch(
+        server_name="0.0.0.0",
+        server_port=port,
+        prevent_thread_lock=True,
+        ssr_mode=False,
+    )
+    demo.app.include_router(api.router)
+    demo.block_thread()
