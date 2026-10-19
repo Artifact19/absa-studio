@@ -153,6 +153,7 @@ export async function POST(req: NextRequest) {
     }> | null = null;
 
     let permissionIssue = false;
+    let apiKeyIssue = false;
 
     try {
       // 1. Try querying absa_tweets_v with candidate keys
@@ -165,6 +166,9 @@ export async function POST(req: NextRequest) {
       if (vErr) {
         if (vErr.message?.toLowerCase().includes("permission denied")) {
           permissionIssue = true;
+        }
+        if (vErr.message?.toLowerCase().includes("invalid api key")) {
+          apiKeyIssue = true;
         }
       } else if (vData && vData.length > 0) {
         rows = vData;
@@ -182,6 +186,9 @@ export async function POST(req: NextRequest) {
           if (vIlikeErr.message?.toLowerCase().includes("permission denied")) {
             permissionIssue = true;
           }
+          if (vIlikeErr.message?.toLowerCase().includes("invalid api key")) {
+            apiKeyIssue = true;
+          }
         } else if (vIlike && vIlike.length > 0) {
           rows = vIlike;
         }
@@ -198,6 +205,9 @@ export async function POST(req: NextRequest) {
         if (tErr) {
           if (tErr.message?.toLowerCase().includes("permission denied")) {
             permissionIssue = true;
+          }
+          if (tErr.message?.toLowerCase().includes("invalid api key")) {
+            apiKeyIssue = true;
           }
         } else if (tData && tData.length > 0) {
           rows = tData.map((d) => ({
@@ -226,6 +236,9 @@ export async function POST(req: NextRequest) {
           if (tIlikeErr.message?.toLowerCase().includes("permission denied")) {
             permissionIssue = true;
           }
+          if (tIlikeErr.message?.toLowerCase().includes("invalid api key")) {
+            apiKeyIssue = true;
+          }
         } else if (tIlike && tIlike.length > 0) {
           rows = tIlike.map((d) => ({
             aspect: d.aspect,
@@ -245,6 +258,18 @@ export async function POST(req: NextRequest) {
     }
 
     if (!rows || rows.length === 0) {
+      if (apiKeyIssue) {
+        return NextResponse.json(
+          {
+            notFound: true,
+            authError: true,
+            message:
+              "Supabase returned 'Invalid API key'. Please check your SUPABASE_SERVICE_ROLE_KEY or SUPABASE_URL in Vercel Environment Variables. Make sure you copy the exact key from Supabase Dashboard -> Project Settings -> API without extra spaces.",
+          },
+          { status: 401 }
+        );
+      }
+
       if (permissionIssue) {
         return NextResponse.json(
           {
