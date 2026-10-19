@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import { Search, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { ApiKeyField } from "./ApiKeyField";
 
@@ -42,8 +43,14 @@ export function SearchBar({
     >
       {!compact && (
         <div className="mb-8 max-w-2xl space-y-3">
-          <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/20 bg-indigo-50/60 px-3.5 py-1 text-xs font-semibold text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/40 dark:text-indigo-300">
-            <span>🎯</span>
+          <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/20 bg-indigo-50/60 px-3 py-1 text-xs font-semibold text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-950/40 dark:text-indigo-300">
+            <Image
+              src="/cat-icon.png"
+              alt="Cat Icon"
+              width={16}
+              height={16}
+              className="h-4 w-4 rounded-sm object-contain"
+            />
             <span>Target-Oriented ABSA Intelligence</span>
           </div>
           <h1 className="text-4xl font-extrabold tracking-tight text-neutral-900 sm:text-5xl dark:text-neutral-50">

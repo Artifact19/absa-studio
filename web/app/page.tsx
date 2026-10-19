@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { SearchBar } from "@/components/SearchBar";
 import { ProvenanceBadge } from "@/components/ProvenanceBadge";
 import { TimeWindowChips } from "@/components/TimeWindowChips";
@@ -144,9 +145,16 @@ export default function HomePage() {
       >
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
           <Link href="/" className="flex items-center gap-2.5 font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-xs">
-              🎯
-            </span>
+            <div className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-xl border border-neutral-200/80 bg-neutral-100 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
+              <Image
+                src="/cat-icon.png"
+                alt="ABSA Studio Cat Icon"
+                width={32}
+                height={32}
+                className="h-full w-full object-contain"
+                priority
+              />
+            </div>
             <span className="text-base sm:text-lg">ABSA Studio</span>
           </Link>
 
