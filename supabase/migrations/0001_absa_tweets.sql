@@ -47,24 +47,27 @@ create or replace function public.admin_table_size() returns bigint
 language sql security definer set search_path = public as
 $$ select pg_total_relation_size('public.absa_tweets') $$;
 
--- ---------- RLS Security ----------
+-- ---------- RLS Security & Permissions ----------
 alter table public.absa_tweets enable row level security;
 
--- Drop redundant policy if it exists (service_role natively bypasses RLS)
+-- Drop permissive policies to satisfy Supabase Security Advisor.
+-- Next.js queries all data server-side using service_role, which bypasses RLS.
+drop policy if exists "allow public read absa_tweets" on public.absa_tweets;
 drop policy if exists "service_role full access" on public.absa_tweets;
 
--- Grant read access to public views and table so queries never throw permission errors
+-- Grant access strictly: only service_role needs full access
 grant usage on schema public to anon, authenticated, service_role;
-grant select on public.absa_tweets to anon, authenticated, service_role;
-grant select on public.absa_tweets_v to anon, authenticated, service_role;
-grant select on public.topic_summary to anon, authenticated, service_role;
 grant all on public.absa_tweets to service_role;
-grant execute on function public.admin_table_size() to service_role, anon;
+grant select on public.absa_tweets_v to service_role;
+grant select on public.topic_summary to service_role;
 
--- Public read RLS policy on absa_tweets
-drop policy if exists "allow public read absa_tweets" on public.absa_tweets;
-create policy "allow public read absa_tweets" on public.absa_tweets
-  for select to anon, authenticated using (true);
+-- Revoke public execution from SECURITY DEFINER functions to eliminate Security Advisor warnings
+revoke all on function public.admin_table_size() from public, anon, authenticated;
+grant execute on function public.admin_table_size() to service_role;
+
+-- Ensure views run with invoker privileges to eliminate security_definer_view errors
+alter view if exists public.absa_tweets_v set (security_invoker = true);
+alter view if exists public.topic_summary set (security_invoker = true);
 
 -- Revoke execute on rls_auto_enable helper if it exists in the database
 do $$
