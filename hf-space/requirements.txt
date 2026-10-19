@@ -1,5 +1,5 @@
-# `spaces`, `gradio`, and `torch` (CUDA) are preinstalled in Hugging Face Spaces.
-transformers>=4.45.0,<5
+# spaces, gradio, and torch are already preinstalled by Hugging Face Spaces.
+transformers>=4.45.0
 accelerate>=0.34.0
 bitsandbytes>=0.43.3
 fastapi>=0.110
