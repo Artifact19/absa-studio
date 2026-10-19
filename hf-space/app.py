@@ -207,8 +207,24 @@ def synthesize(req: SynthReq):
     return StreamingResponse(_synth_stream(prompt), media_type="text/plain; charset=utf-8")
 
 # Minimal Gradio UI required by the Gradio SDK / ZeroGPU runtime.
-with gr.Blocks() as demo:
-    gr.Markdown("# ABSA Inference API\nSee `/docs` for the REST API.")
+@spaces.GPU(duration=60)
+def demo_classify(text: str, target: str):
+    if not text or not target:
+        return "Please provide both text and target."
+    probs = _classify([text], target)
+    p = probs[0]
+    best_idx = max(range(3), key=lambda i: p[i])
+    labels = ["Positive", "Negative", "Neutral"]
+    return f"Verdict: {labels[best_idx]} (Pos: {p[0]:.2%}, Neg: {p[1]:.2%}, Neu: {p[2]:.2%})"
+
+with gr.Blocks(title="ABSA Studio Inference") as demo:
+    gr.Markdown("# Target-Oriented ABSA Studio Inference API\nFastAPI REST endpoints available at `/docs`.")
+    with gr.Row():
+        d_text = gr.Textbox(label="Sample Post", value="The battery on iPhone 17 is incredible!")
+        d_target = gr.Textbox(label="Target Entity", value="iPhone 17")
+    d_out = gr.Textbox(label="ZeroGPU Sentiment Output")
+    d_btn = gr.Button("Analyze Sentiment with ZeroGPU", variant="primary")
+    d_btn.click(fn=demo_classify, inputs=[d_text, d_target], outputs=d_out)
 
 app = gr.mount_gradio_app(api, demo, path="/")  # note: API routes registered first
 
