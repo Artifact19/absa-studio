@@ -117,7 +117,7 @@ export default function HomePage() {
           if (res.status === 429 || res.status === 503) {
             setWarmupMessage("Inference server is spinning up. Retrying...");
           }
-          throw new Error(data.error || "Failed to analyze topic");
+          throw new Error(data.message || data.error || "Failed to analyze topic");
         }
 
         setAnalyzedData(data);
