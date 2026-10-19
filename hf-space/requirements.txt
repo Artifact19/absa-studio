@@ -1,0 +1,8 @@
+# `spaces` and `gradio` are preinstalled on Gradio Spaces; do not pin them.
+torch==2.4.0
+transformers>=4.45.0,<5
+accelerate>=0.34.0
+bitsandbytes>=0.43.3
+fastapi>=0.110
+uvicorn>=0.30
+pydantic>=2.6
