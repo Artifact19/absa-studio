@@ -1,4 +1,4 @@
-# Target-Oriented ABSA Studio 🎯
+# Target-Oriented ABSA Studio
 
 > **Aspect-Based Sentiment Analysis on Demand:** Disentangle collateral emotion from true public attitude using **Qwen2.5-3B-Instruct**, exponential recency weighting, and verifiable ground-truth evidence.
 
@@ -12,7 +12,7 @@
 
 ---
 
-## 💡 The Core Problem ABSA Solves
+## The Core Problem ABSA Solves
 
 Standard sentiment analysis models judge entire sentences as a single blob. For example:
 
@@ -26,7 +26,7 @@ A naive sentiment analyzer classifies this tweet as **negative** due to the word
 
 ---
 
-## 🏛️ System Architecture
+## System Architecture
 
 ```
 ┌──────────────────────────────────────┐        ┌───────────────────────────────┐
@@ -50,16 +50,16 @@ A naive sentiment analyzer classifies this tweet as **negative** due to the word
 
 ---
 
-## ✨ Key Features
+## Key Features
 
-### 1. ⚡ Snackable Executive Insights (Streaming)
+### 1. Snackable Executive Insights (Streaming)
 Synthesizes verified community reactions into a high-impact, 4-card executive brief streamed token-by-token:
 - **⚡ 10-Second Verdict:** Exactly one 15-word punchline summarizing public stance.
 - **🟢 The Exciting:** 2 structured theme bullets highlighting standout features.
 - **🔴 The Frustrating:** 2 structured theme bullets detailing primary pain points.
 - **🎯 The Bottom Line:** One single actionable takeaway.
 
-### 2. ⏳ Dynamic Temporal Windows
+### 2. Dynamic Temporal Windows
 Intelligently slices historical data into observation periods based on available data depth:
 - **Today:** Most recent 24 hours.
 - **Past 7 Days:** Available when data depth $\ge$ 2 days.
@@ -67,7 +67,7 @@ Intelligently slices historical data into observation periods based on available
 - **Past 1 Year:** Available when data depth $\ge$ 31 days.
 - **All Time:** Explicit format containing exact start date, end date, and total day span (e.g., `All Time: Oct 14, 2025 – Oct 19, 2026 (370 days)`).
 
-### 3. 📉 Exponential Recency Weighting
+### 3. Exponential Recency Weighting
 Stale opinions shouldn't drown out fresh product updates. Tweets decay with a **14-day half-life**:
 
 $$w_i = e^{-\lambda \Delta t_i}, \qquad \lambda = \frac{\ln 2}{14} \approx 0.0495105\ \text{day}^{-1}$$
@@ -78,7 +78,7 @@ $$S_c = \frac{\sum_i w_i\,\mathbb{1}[y_i = c]}{\sum_i w_i}, \qquad \text{Weighte
 
 Both raw counts and recency-weighted shares are displayed side-by-side.
 
-### 4. 🚀 Sentiment Velocity Momentum
+### 4. Sentiment Velocity Momentum
 Detects whether sentiment is improving or worsening over time by comparing the 7-day recent window to the all-time baseline:
 
 $$\Delta = P_{\text{recent (7D)}} - P_{\text{baseline (All-Time)}}\quad (\text{percentage points})$$
