@@ -51,13 +51,13 @@ export function SearchBar({
               height={16}
               className="h-4 w-4 rounded-sm object-contain"
             />
-            <span>Target-Oriented ABSA Intelligence</span>
+            <span>Real opinions. Zero noise.</span>
           </div>
           <h1 className="text-4xl font-extrabold tracking-tight text-neutral-900 sm:text-5xl dark:text-neutral-50">
-            Aspect Sentiment on <span className="text-indigo-600 dark:text-indigo-400">Demand</span>
+            See what people <span className="text-indigo-600 dark:text-indigo-400">really think</span>
           </h1>
           <p className="text-base text-neutral-600 dark:text-neutral-400 max-w-lg mx-auto">
-            Disentangle collateral noise from true public attitude using Qwen2.5-3B and exponential recency weighting.
+            Search any phone, game, brand, or celebrity. We scan recent posts, ignore the junk, and tell you if people actually like it or not.
           </p>
         </div>
       )}
@@ -76,7 +76,7 @@ export function SearchBar({
             type="text"
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
-            placeholder="Search any product, brand, or topic (e.g. iPhone 17, Nvidia RTX 5090, GTA 6)..."
+            placeholder="Search anything (e.g. iPhone 17, Max Verstappen, GTA 6)..."
             disabled={isLoading}
             className={`w-full rounded-2xl border border-neutral-300 bg-white/90 pl-11 pr-28 text-neutral-900 shadow-sm placeholder:text-neutral-400 focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/15 dark:border-neutral-700 dark:bg-neutral-900/90 dark:text-neutral-100 dark:placeholder:text-neutral-500 ${
               compact ? "py-2.5 text-sm" : "py-4 text-base"

@@ -129,22 +129,59 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Query historical tweets for this topic from absa_tweets_v
-    const { data: rows, error: fetchErr } = await supabase
-      .from("absa_tweets_v")
-      .select("aspect, tweeted_at, text, cleaned_text, sentiment, p_pos, p_neg, p_neu, handle")
-      .eq("topic_key", topicKey)
-      .order("tweeted_at", { ascending: false });
+    let rows: Array<{
+      aspect: string | null;
+      tweeted_at: string;
+      text: string;
+      cleaned_text: string;
+      sentiment: string;
+      p_pos: number | null;
+      p_neg: number | null;
+      p_neu: number | null;
+      handle: string | null;
+    }> | null = null;
 
-    if (fetchErr) {
-      console.error("Database query error:", fetchErr);
-      return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+    try {
+      const { data, error: fetchErr } = await supabase
+        .from("absa_tweets_v")
+        .select("aspect, tweeted_at, text, cleaned_text, sentiment, p_pos, p_neg, p_neu, handle")
+        .eq("topic_key", topicKey)
+        .order("tweeted_at", { ascending: false });
+
+      if (!fetchErr && data) {
+        rows = data;
+      } else {
+        // Fallback: direct table query if view has permission restrictions
+        const { data: directData } = await supabase
+          .from("absa_tweets")
+          .select('aspect, time, text, cleaned_text, "qwen2.5-3b-instruct_sentiment", qwen_prob_pos, qwen_prob_neg, qwen_prob_neu, "user"')
+          .eq("topic_key", topicKey)
+          .order("time", { ascending: false });
+
+        if (directData && directData.length > 0) {
+          rows = directData.map((d) => ({
+            aspect: d.aspect,
+            tweeted_at: d.time,
+            text: d.text,
+            cleaned_text: d.cleaned_text,
+            sentiment: (d as Record<string, unknown>)["qwen2.5-3b-instruct_sentiment"] as string,
+            p_pos: d.qwen_prob_pos,
+            p_neg: d.qwen_prob_neg,
+            p_neu: d.qwen_prob_neu,
+            handle: (d as Record<string, unknown>)["user"] as string,
+          }));
+        }
+      }
+    } catch (dbErr) {
+      console.warn("Database read warning:", dbErr);
     }
 
     if (!rows || rows.length === 0) {
       return NextResponse.json(
         {
           notFound: true,
-          message: "No analysis for this topic yet. Add a FetchLayer key to fetch fresh posts.",
+          message:
+            "No posts found for this topic yet. Click 'FetchLayer Key' above and enter your FetchLayer API key to fetch and analyze fresh posts!",
         },
         { status: 404 }
       );

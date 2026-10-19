@@ -11,6 +11,7 @@ import { Lock, KeyRound, ShieldAlert, Trash2, ArrowLeft, RefreshCw, LogOut, Load
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [emailInput, setEmailInput] = useState("");
   const [passkeyInput, setPasskeyInput] = useState("");
   const [loginError, setLoginError] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -111,7 +112,10 @@ export default function AdminPage() {
       const res = await fetch("/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ passkey: passkeyInput.trim() }),
+        body: JSON.stringify({
+          email: emailInput.trim(),
+          passkey: passkeyInput.trim(),
+        }),
       });
 
       const data = await res.json();
@@ -170,18 +174,30 @@ export default function AdminPage() {
             </div>
           )}
 
-          <form onSubmit={handleLoginSubmit} className="mt-6 space-y-4">
+          <form onSubmit={handleLoginSubmit} className="mt-6 space-y-3.5">
             <div>
-              <div className="relative">
-                <KeyRound className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500" />
+              <label className="text-[11px] font-semibold text-neutral-400">Admin Email</label>
+              <input
+                type="email"
+                value={emailInput}
+                onChange={(e) => setEmailInput(e.target.value)}
+                placeholder="arnavraut4567@gmail.com"
+                className="mt-1 w-full rounded-xl border border-neutral-700 bg-neutral-800/80 py-2 px-3 text-xs text-neutral-100 placeholder:text-neutral-500 focus:border-indigo-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-[11px] font-semibold text-neutral-400">Master Passkey</label>
+              <div className="relative mt-1">
+                <KeyRound className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-500" />
                 <input
                   type="password"
                   required
                   autoFocus
                   value={passkeyInput}
                   onChange={(e) => setPasskeyInput(e.target.value)}
-                  placeholder="Master Passkey..."
-                  className="w-full rounded-xl border border-neutral-700 bg-neutral-800/80 py-2.5 pl-10 pr-3 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-indigo-500 focus:outline-none"
+                  placeholder="absa_admin_..."
+                  className="w-full rounded-xl border border-neutral-700 bg-neutral-800/80 py-2 pl-9 pr-3 text-xs text-neutral-100 placeholder:text-neutral-500 focus:border-indigo-500 focus:outline-none"
                 />
               </div>
             </div>

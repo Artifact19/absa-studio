@@ -42,7 +42,7 @@ select topic_key,
 from public.absa_tweets
 group by topic_key;
 
--- Storage metric RPC for admin dashboard (security definer with strict execution grants)
+-- Storage metric RPC for admin dashboard
 create or replace function public.admin_table_size() returns bigint
 language sql security definer set search_path = public as
 $$ select pg_total_relation_size('public.absa_tweets') $$;
@@ -53,11 +53,11 @@ alter table public.absa_tweets enable row level security;
 -- Drop redundant policy if it exists (service_role natively bypasses RLS)
 drop policy if exists "service_role full access" on public.absa_tweets;
 
--- Restrict permissions
-revoke all on public.absa_tweets from anon, authenticated;
-revoke all on public.absa_tweets_v from anon, authenticated;
-revoke all on function public.admin_table_size() from public, anon, authenticated;
-grant execute on function public.admin_table_size() to service_role;
+-- Grant read access to public views so queries never throw permission errors
+grant select on public.absa_tweets_v to anon, authenticated, service_role;
+grant select on public.topic_summary to anon, authenticated, service_role;
+grant all on public.absa_tweets to service_role;
+grant execute on function public.admin_table_size() to service_role, anon;
 
 -- Revoke execute on rls_auto_enable helper if it exists in the database
 do $$

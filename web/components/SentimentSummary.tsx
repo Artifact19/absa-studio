@@ -38,24 +38,21 @@ export function SentimentSummary({ data }: SentimentSummaryProps) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-            Target Sentiment Verdict
+            Overall Public Feeling
           </div>
           <div className="mt-1.5 flex items-center gap-3">
             <span
               className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-1.5 text-base font-bold capitalize ${verdictStyles.badge}`}
             >
               <span className={`h-2.5 w-2.5 rounded-full ${verdictStyles.dot}`} />
-              {weighted.verdict}
-            </span>
-            <span className="text-sm text-neutral-500 dark:text-neutral-400">
-              Raw verdict: <strong className="font-semibold capitalize text-neutral-800 dark:text-neutral-200">{rawVerdict}</strong>
+              Mostly {weighted.verdict}
             </span>
           </div>
         </div>
 
         <div className="text-left sm:text-right">
           <div className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-            Active Sample Size
+            Total Posts
           </div>
           <div className="mt-1 text-2xl font-black text-neutral-900 dark:text-neutral-100 tabular-nums">
             {counts.total.toLocaleString()} <span className="text-xs font-normal text-neutral-500">posts</span>

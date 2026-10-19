@@ -1,6 +1,6 @@
 # Target-Oriented ABSA Studio
 
-> **Aspect-Based Sentiment Analysis on Demand:** Disentangle collateral emotion from true public attitude using **Qwen2.5-3B-Instruct**, exponential recency weighting, and verifiable ground-truth evidence.
+> **Target-Oriented Aspect-Based Sentiment Analysis Platform:** Isolates authentic public sentiment toward specific entities, products, and brands using **Qwen2.5-3B-Instruct**, recency-weighted decay scoring, and verifiable ground-truth evidence.
 
 [![Next.js](https://img.shields.io/badge/Next.js-16_App_Router-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
@@ -12,196 +12,197 @@
 
 ---
 
-## The Core Problem ABSA Solves
+## Overview
 
-Standard sentiment analysis models judge entire sentences as a single blob. For example:
+Traditional sentiment analysis evaluates sentences as uniform blocks. When a statement expresses mixed emotions toward different entities, standard classifiers routinely misjudge the core target.
 
-> *"The **iPhone 17** battery life is genuinely incredible, but FedEx delayed delivery by four days and customer service was completely useless."*
+Consider the following post:
 
-A naive sentiment analyzer classifies this tweet as **negative** due to the words *"delayed"* and *"useless"*. 
+> "The iPhone 17 battery life is genuinely incredible, but courier shipping delayed delivery by four days and customer support was completely unhelpful."
 
-**ABSA Studio isolates sentiment strictly toward the target entity:**
-- **Collateral noise:** Frustration with courier/shipping (ignored).
-- **Target sentiment:** Unambiguously **positive** toward the iPhone 17's battery life.
+A naive classifier flags this post as negative due to terms like "delayed" and "unhelpful". 
+
+**Target-Oriented ABSA isolates sentiment strictly toward the subject:**
+- **Collateral Emotion:** Frustration regarding delivery logistics is isolated and ignored.
+- **Target Sentiment:** Unambiguously positive toward the battery performance of the iPhone 17.
 
 ---
 
 ## System Architecture
 
 ```
-┌──────────────────────────────────────┐        ┌───────────────────────────────┐
-│     Browser (Public & Admin UI)      │        │  Supabase PostgreSQL (Free)   │
-└──────────────────┬───────────────────┘        │  table: absa_tweets           │
-                   │ HTTPS                      └───────────────▲───────────────┘
-┌──────────────────▼───────────────────┐   supabase-js (service_role, server only)
-│  Next.js 16 App Router (Vercel)      │────────────────────────┘
-│  • Perplexity-Style Dynamic Search   │
-│  • Temporal Window & Recency Engine  │   REST + X-API-Key Secret
-│  • Edge Admin Middleware Gate        │────────────────────────┐
-└──────────────────────────────────────┘                        │
-                                        ┌───────────────────────▼───────┐
-                                        │ Hugging Face Space (ZeroGPU)  │
-                                        │ Qwen2.5-3B-Instruct           │
-                                        │ • POST /extract-target        │
-                                        │ • POST /classify-batch        │
-                                        │ • POST /synthesize-insights   │
-                                        └───────────────────────────────┘
++--------------------------------------+        +-------------------------------+
+|     Browser (Public & Admin UI)      |        |  Supabase PostgreSQL          |
++------------------+-------------------+        |  table: absa_tweets           |
+                   | HTTPS                      +---------------+---------------+
++------------------v-------------------+   supabase-js (service_role, server)
+|  Next.js 16 App Router (Vercel)      |----------------+
+|  - Dynamic Query & Temporal Engine   |
+|  - Recency Weighting Calculation     |   REST + X-API-Key Secret
+|  - Edge Security & Auth Middleware   |----------------+
++--------------------------------------+                |
+                                        +---------------v---------------+
+                                        | Hugging Face Space (ZeroGPU)  |
+                                        | Qwen2.5-3B-Instruct           |
+                                        | - POST /extract-target        |
+                                        | - POST /classify-batch        |
+                                        | - POST /synthesize-insights   |
+                                        +-------------------------------+
 ```
 
 ---
 
-## Key Features
+## Core Capabilities
 
-### 1. Snackable Executive Insights (Streaming)
-Synthesizes verified community reactions into a high-impact, 4-card executive brief streamed token-by-token:
-- **⚡ 10-Second Verdict:** Exactly one 15-word punchline summarizing public stance.
-- **🟢 The Exciting:** 2 structured theme bullets highlighting standout features.
-- **🔴 The Frustrating:** 2 structured theme bullets detailing primary pain points.
-- **🎯 The Bottom Line:** One single actionable takeaway.
+### 1. Structured Executive Brief (Streaming)
+Synthesizes verified community reactions into a high-impact, four-section executive summary streamed token-by-token:
+- **Ten-Second Verdict:** A single fifteen-word sentence summarizing the prevailing public stance.
+- **The Exciting:** Structured theme items identifying primary positive drivers.
+- **The Frustrating:** Structured theme items highlighting primary user criticisms.
+- **The Bottom Line:** A single actionable takeaway.
 
-### 2. Dynamic Temporal Windows
-Intelligently slices historical data into observation periods based on available data depth:
+### 2. Dynamic Observation Windows
+Segments historical datasets into observation periods based on total temporal coverage:
 - **Today:** Most recent 24 hours.
-- **Past 7 Days:** Available when data depth $\ge$ 2 days.
-- **Past 30 Days:** Available when data depth $\ge$ 8 days.
-- **Past 1 Year:** Available when data depth $\ge$ 31 days.
-- **All Time:** Explicit format containing exact start date, end date, and total day span (e.g., `All Time: Oct 14, 2025 – Oct 19, 2026 (370 days)`).
+- **Past 7 Days:** Activated when dataset span is at least 2 days.
+- **Past 30 Days:** Activated when dataset span is at least 8 days.
+- **Past 1 Year:** Activated when dataset span is at least 31 days.
+- **All Time:** Explicit display containing start date, end date, and total day span (e.g., `All Time: Oct 14, 2025 – Oct 19, 2026 (370 days)`).
 
 ### 3. Exponential Recency Weighting
-Stale opinions shouldn't drown out fresh product updates. Tweets decay with a **14-day half-life**:
+Older opinions should not obscure recent changes in perception. Posts undergo exponential decay with a **14-day half-life**:
 
 $$w_i = e^{-\lambda \Delta t_i}, \qquad \lambda = \frac{\ln 2}{14} \approx 0.0495105\ \text{day}^{-1}$$
 
-where $\Delta t_i$ is the age of tweet $i$ in days. Weighted class share is computed as:
+where $\Delta t_i$ represents the age of post $i$ in days. The weighted share for class $c \in \{\text{positive}, \text{negative}, \text{neutral}\}$ is calculated as:
 
-$$S_c = \frac{\sum_i w_i\,\mathbb{1}[y_i = c]}{\sum_i w_i}, \qquad \text{Weighted Verdict} = \operatorname*{argmax}_c S_c$$
+$$S_c = \frac{\sum_i w_i \cdot \mathbb{I}[y_i = c]}{\sum_i w_i}$$
 
-Both raw counts and recency-weighted shares are displayed side-by-side.
+$$\text{Weighted Verdict} = \arg\max_c (S_c)$$
+
+Raw counts and recency-weighted proportions are reported in parallel.
 
 ### 4. Sentiment Velocity Momentum
-Detects whether sentiment is improving or worsening over time by comparing the 7-day recent window to the all-time baseline:
+Tracks whether sentiment is improving or declining over time by comparing the recent 7-day window to the all-time baseline:
 
 $$\Delta = P_{\text{recent (7D)}} - P_{\text{baseline (All-Time)}}\quad (\text{percentage points})$$
 
-- 🚀 **Bullish Momentum:** $\Delta > +3\%$ (Emerald badge)
-- 🔻 **Declining Sentiment:** $\Delta < -3\%$ (Rose badge)
-- ⚖️ **Stable Consensus:** $-3\% \le \Delta \le +3\%$ (Slate badge)
-- *Hidden automatically if sample size $< 10$ or date depth $< 14$ days.*
+- **Bullish Momentum:** $\Delta > +3\%$
+- **Declining Sentiment:** $\Delta < -3\%$
+- **Stable Consensus:** $-3\% \le \Delta \le +3\%$
+- *Suppressed automatically when recent sample size is less than 10 or dataset depth is less than 14 days.*
 
-### 5. 🛡️ Verified Public Evidence
-Displays the **Top 5 Positive** and **Top 5 Negative** ground-truth tweets sorted by model confidence.
-- Clean React text nodes (HTML injection and `<script>` immune).
-- Handles sanitized to `/^[A-Za-z0-9_]{1,30}$/`.
-- Accessible confidence meters (`role="meter"`) with relative and absolute tooltips.
+### 5. Ground-Truth Public Evidence
+Presents the top 5 positive and top 5 negative reference posts ordered by model confidence score.
+- Rendered as plain text nodes to prevent script execution.
+- Handles sanitized against standard alphanumeric formats.
+- Visual confidence meters with precise percentages and timestamp tooltips.
 
-### 6. 🔒 Enterprise-Grade Admin Console (`/admin`)
-- **Passkey Gate:** Constant-time verification (`crypto.timingSafeEqual`) and signed HMAC session cookies (8-hour expiry). Rate-limited to 5 attempts / 15 minutes.
-- **Supabase Storage Meter:** Live storage monitoring (`X MB / 500 MB`) via `admin_table_size()` RPC.
-- **Interactive Tweet Inspector:** Server-side sorting, pagination, topic/sentiment filters, and raw vs. cleaned text toggle.
-- **Live Scraper Pipeline:** Streams NDJSON progress (`fetching` $\to$ `cleaning` $\to$ `classifying` $\to$ `upserting`) with real-time progress bars.
-- **Topic Pruning:** Type-to-confirm dataset deletion and retention purger (older than $N$ days).
+### 6. Management Portal
+- **Passkey Gate:** Constant-time credential verification and signed HMAC session cookies (8-hour expiration).
+- **Storage Monitoring:** Real-time database utilization tracking relative to service limits.
+- **Record Inspector:** Sorting, server-side pagination, search filters, and raw/cleaned text toggle.
+- **Ingestion Pipeline:** Streams NDJSON progress across scraping, cleaning, model classification, and deduplication stages.
+- **Dataset Pruning:** Explicit confirmation for topic-level deletion and retention purges.
 
 ---
 
-## 📂 Repository Layout
+## Repository Structure
 
 ```
 absa-studio/
-├── web/                                  # Next.js App Router frontend & API
-│   ├── app/                              # Pages & API route handlers
-│   ├── components/                       # UI components (Search, Badges, Cards, Admin)
-│   ├── lib/                              # Analytics math, Supabase server, HF client, Auth
-│   ├── middleware.ts                     # Edge security proxy protecting /admin
+├── web/                                  # Next.js App Router application
+│   ├── app/                              # Pages and API route handlers
+│   ├── components/                       # UI components and management views
+│   ├── lib/                              # Analytics, database server, model client
+│   ├── middleware.ts                     # Edge security proxy
 │   └── scripts/test-analytics.ts         # Automated unit test suite
-├── hf-space/                             # Hugging Face ZeroGPU inference server
-│   ├── README.md                         # Gradio Space YAML metadata
-│   ├── app.py                            # FastAPI mounted in Gradio + Qwen2.5-3B
-│   └── requirements.txt                  # PyTorch, Transformers, FastAPI
+├── hf-space/                             # Hugging Face inference deployment
+│   ├── README.md                         # Gradio Space configuration
+│   ├── app.py                            # FastAPI server with Qwen2.5-3B
+│   └── requirements.txt                  # Model runtime dependencies
 └── supabase/
     └── migrations/
-        └── 0001_absa_tweets.sql          # Postgres tables, views, RLS, & size RPC
+        └── 0001_absa_tweets.sql          # Database tables, views, and functions
 ```
 
 ---
 
-## 🛠️ Local Development Setup
+## Local Development Setup
 
-### 1. Prerequisites
-- **Node.js** v20+ & **npm**
-- A **Supabase** project (Free tier)
-- A **Hugging Face** Space (ZeroGPU or CPU basic)
+### 1. Requirements
+- Node.js version 20 or higher
+- Supabase project
+- Hugging Face Space (ZeroGPU or CPU basic)
 
-### 2. Install Dependencies
+### 2. Dependency Installation
 ```bash
 cd web
 npm install
 ```
 
-### 3. Configure Environment Variables
-Create a file at `web/.env.local`:
+### 3. Environment Configuration
+Create a `.env.local` file inside the `web` directory:
 ```ini
 # Supabase
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_secret
 
 # Hugging Face Inference
-HF_SPACE_URL=https://your-user-absa-studio.hf.space
+HF_SPACE_URL=https://your-space.hf.space
 HF_API_SECRET=your_hf_shared_secret
 
-# Admin Portal
-ADMIN_PASSKEY=your_strong_admin_passkey
+# Access Control
+ADMIN_PASSKEY=your_admin_passkey
 ADMIN_COOKIE_SECRET=your_32_byte_cookie_secret
 
-# FetchLayer (Optional server default; users can also provide in UI)
+# Data Source (Optional default; can also be provided in UI)
 FETCHLAYER_API_KEY=
 FETCHLAYER_BASE_URL=https://api.fetchlayer.dev
 ```
 
-### 4. Run Unit Tests
-Verify mathematical formulas, recency decay half-lives, velocity thresholds, and dedup hashing:
+### 4. Verification Suite
+Execute the mathematical validation tests covering recency decay, velocity boundaries, and deduplication:
 ```bash
 npx tsx scripts/test-analytics.ts
 ```
 
-### 5. Start Development Server
+### 5. Development Server
 ```bash
 npm run dev
 ```
-Open [http://localhost:3000](http://localhost:3000) to view the application.
+Navigate to `http://localhost:3000` to access the interface.
 
 ---
 
-## 🚀 Cloud Deployment
+## Cloud Deployment
 
-### 1. Supabase Database Migration
-1. Go to your **Supabase Dashboard** → **SQL Editor**.
-2. Run the script in [`supabase/migrations/0001_absa_tweets.sql`](supabase/migrations/0001_absa_tweets.sql).
+### 1. Database Setup (Supabase)
+1. Open the Supabase SQL Editor.
+2. Execute the migration file located at `supabase/migrations/0001_absa_tweets.sql`.
 
-### 2. Hugging Face Space (ZeroGPU)
-1. Create a Space at [huggingface.co/new-space](https://huggingface.co/new-space) (SDK: **Gradio**, Hardware: **ZeroGPU**).
-2. Upload the 3 files from [`hf-space/`](hf-space/):
-   - `README.md`
-   - `requirements.txt`
-   - `app.py`
-3. In Space **Settings** → **Variables and secrets**, add `API_SECRET`.
+### 2. Model Service Deployment (Hugging Face)
+1. Create a new Space with Gradio SDK on ZeroGPU hardware.
+2. Upload the files from `hf-space/`: `README.md`, `requirements.txt`, and `app.py`.
+3. In Space Settings under Variables and Secrets, add `API_SECRET`.
 
-### 3. Vercel Deployment
-1. Import `Artifact19/absa-studio` into [Vercel](https://vercel.com/new).
-2. Set **Root Directory** to `web`.
-3. Add the environment variables from your `web/.env.local`.
-4. Deploy!
+### 3. Frontend Deployment (Vercel)
+1. Import the repository into Vercel.
+2. Set the Root Directory to `web`.
+3. Configure the environment variables specified in `.env.local`.
+4. Deploy the application.
 
 ---
 
-## 🔐 Security & Privacy Principles
+## Security Architecture
 
-- **Zero Key Leakage:** Client browsers never receive the Supabase `service_role` key, the Hugging Face shared secret, or the admin passkey.
-- **Strict Row-Level Security:** Direct table reads for anonymous visitors are revoked at the PostgreSQL engine level; all reads/writes go through sanitized server routes.
-- **CSRF Defense:** All mutating admin routes verify the `Origin` header against the host domain.
-- **XSS Immunity:** Raw tweet text is rendered strictly as plain text nodes, and author handles are validated before rendering.
+- **Credential Isolation:** The client application never receives administrative secrets or database service keys.
+- **Row-Level Security:** Unauthenticated direct access to raw data tables is revoked at the database layer.
+- **CSRF Defense:** Modifying requests validate Origin headers against the host domain.
+- **Input Neutralization:** User-generated content is sanitized and rendered without HTML interpretation.
 
 ---
 
-## 📜 License
+## License
 
-Licensed under the [Apache-2.0 License](LICENSE).
+Distributed under the Apache-2.0 License.
