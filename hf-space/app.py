@@ -1,4 +1,5 @@
 import os
+os.environ["GRADIO_SSR_MODE"] = "false"
 import json
 import threading
 import re
@@ -33,7 +34,7 @@ if tok.pad_token is None:
 # On ZeroGPU, loading to "cuda" at import time is the supported pattern.
 model = AutoModelForCausalLM.from_pretrained(
     MODEL_ID,
-    torch_dtype=torch.float16 if USE_GPU else torch.float32,
+    dtype=torch.float16 if USE_GPU else torch.float32,
     device_map="cuda" if USE_GPU else None,
 )
 if USE_GPU and not hasattr(model, "hf_device_map"):
@@ -51,7 +52,7 @@ def _first_ids(word: str) -> List[int]:
 LABEL_IDS = [_first_ids(w) for w in LABELS]
 
 def verify(x_api_key: Optional[str] = Header(None)):
-    if not API_SECRET or x_api_key != API_SECRET:
+    if API_SECRET and x_api_key != API_SECRET:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 def chat(system: str, user: str) -> str:
@@ -226,43 +227,8 @@ with gr.Blocks(title="ABSA Studio Inference") as demo:
     d_btn = gr.Button("Analyze Sentiment with ZeroGPU", variant="primary")
     d_btn.click(fn=demo_classify, inputs=[d_text, d_target], outputs=d_out)
 
-app = gr.mount_gradio_app(api, demo, path="/")  # note: API routes registered first
+app = gr.mount_gradio_app(api, demo, path="/", ssr_mode=False)  # note: API routes registered first
 
 if __name__ == "__main__":
-    import socket
-    import subprocess
-    import time
-
     port = int(os.environ.get("PORT", 7860))
-
-    # Clean up any lingering zombie process holding the port
-    try:
-        subprocess.run(f"fuser -k -9 {port}/tcp", shell=True, capture_output=True)
-        time.sleep(0.5)
-    except Exception:
-        pass
-
-    # Bind socket with SO_REUSEADDR and SO_REUSEPORT to eliminate Errno 98
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    if hasattr(socket, "SO_REUSEPORT"):
-        try:
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-        except Exception:
-            pass
-
-    for attempt in range(5):
-        try:
-            sock.bind(("0.0.0.0", port))
-            break
-        except OSError as e:
-            if getattr(e, "errno", None) == 98 and attempt < 4:
-                print(f"[Port {port} in TIME_WAIT, retrying in 2s ({attempt + 1}/5)...]")
-                time.sleep(2)
-            else:
-                raise
-
-    sock.listen(128)
-    config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")
-    server = uvicorn.Server(config)
-    server.run(sockets=[sock])
+    uvicorn.run(app, host="0.0.0.0", port=port)
