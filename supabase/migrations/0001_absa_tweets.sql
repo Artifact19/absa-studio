@@ -53,11 +53,18 @@ alter table public.absa_tweets enable row level security;
 -- Drop redundant policy if it exists (service_role natively bypasses RLS)
 drop policy if exists "service_role full access" on public.absa_tweets;
 
--- Grant read access to public views so queries never throw permission errors
+-- Grant read access to public views and table so queries never throw permission errors
+grant usage on schema public to anon, authenticated, service_role;
+grant select on public.absa_tweets to anon, authenticated, service_role;
 grant select on public.absa_tweets_v to anon, authenticated, service_role;
 grant select on public.topic_summary to anon, authenticated, service_role;
 grant all on public.absa_tweets to service_role;
 grant execute on function public.admin_table_size() to service_role, anon;
+
+-- Public read RLS policy on absa_tweets
+drop policy if exists "allow public read absa_tweets" on public.absa_tweets;
+create policy "allow public read absa_tweets" on public.absa_tweets
+  for select to anon, authenticated using (true);
 
 -- Revoke execute on rls_auto_enable helper if it exists in the database
 do $$

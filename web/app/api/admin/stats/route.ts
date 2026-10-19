@@ -12,24 +12,59 @@ export async function GET(req: NextRequest) {
     const supabase = sb();
 
     // 1. Total records and sentiment distribution
-    const { count: totalRecords } = await supabase
+    let totalRecords: number | null = null;
+    let countPos: number | null = null;
+    let countNeg: number | null = null;
+    let countNeu: number | null = null;
+
+    const resTotal = await supabase
       .from("absa_tweets")
       .select("*", { count: "exact", head: true });
 
-    const { count: countPos } = await supabase
-      .from("absa_tweets")
-      .select("*", { count: "exact", head: true })
-      .eq("qwen2.5-3b-instruct_sentiment", "positive");
+    if (resTotal.count !== null && resTotal.count !== undefined) {
+      totalRecords = resTotal.count;
+      const resPos = await supabase
+        .from("absa_tweets")
+        .select("*", { count: "exact", head: true })
+        .eq("qwen2.5-3b-instruct_sentiment", "positive");
+      countPos = resPos.count;
 
-    const { count: countNeg } = await supabase
-      .from("absa_tweets")
-      .select("*", { count: "exact", head: true })
-      .eq("qwen2.5-3b-instruct_sentiment", "negative");
+      const resNeg = await supabase
+        .from("absa_tweets")
+        .select("*", { count: "exact", head: true })
+        .eq("qwen2.5-3b-instruct_sentiment", "negative");
+      countNeg = resNeg.count;
 
-    const { count: countNeu } = await supabase
-      .from("absa_tweets")
-      .select("*", { count: "exact", head: true })
-      .eq("qwen2.5-3b-instruct_sentiment", "neutral");
+      const resNeu = await supabase
+        .from("absa_tweets")
+        .select("*", { count: "exact", head: true })
+        .eq("qwen2.5-3b-instruct_sentiment", "neutral");
+      countNeu = resNeu.count;
+    } else {
+      // Fallback: try view absa_tweets_v
+      const resV = await supabase
+        .from("absa_tweets_v")
+        .select("*", { count: "exact", head: true });
+      totalRecords = resV.count;
+
+      const resPos = await supabase
+        .from("absa_tweets_v")
+        .select("*", { count: "exact", head: true })
+        .eq("sentiment", "positive");
+      countPos = resPos.count;
+
+      const resNeg = await supabase
+        .from("absa_tweets_v")
+        .select("*", { count: "exact", head: true })
+        .eq("sentiment", "negative");
+      countNeg = resNeg.count;
+
+      const resNeu = await supabase
+        .from("absa_tweets_v")
+        .select("*", { count: "exact", head: true })
+        .eq("sentiment", "neutral");
+      countNeu = resNeu.count;
+    }
 
     // 2. Total unique topics and time boundaries
     const { data: topicsData } = await supabase

@@ -129,6 +129,17 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Query historical tweets for this topic from absa_tweets_v
+    const candidateKeys = Array.from(
+      new Set(
+        [
+          topicKey,
+          topicKey.replace(/\s+/g, ""),
+          rawTopic.trim(),
+          rawTopic.trim().toLowerCase(),
+        ].filter(Boolean)
+      )
+    );
+
     let rows: Array<{
       aspect: string | null;
       tweeted_at: string;
@@ -141,25 +152,82 @@ export async function POST(req: NextRequest) {
       handle: string | null;
     }> | null = null;
 
+    let permissionIssue = false;
+
     try {
-      const { data, error: fetchErr } = await supabase
+      // 1. Try querying absa_tweets_v with candidate keys
+      const { data: vData, error: vErr } = await supabase
         .from("absa_tweets_v")
         .select("aspect, tweeted_at, text, cleaned_text, sentiment, p_pos, p_neg, p_neu, handle")
-        .eq("topic_key", topicKey)
+        .in("topic_key", candidateKeys)
         .order("tweeted_at", { ascending: false });
 
-      if (!fetchErr && data) {
-        rows = data;
-      } else {
-        // Fallback: direct table query if view has permission restrictions
-        const { data: directData } = await supabase
+      if (vErr) {
+        if (vErr.message?.toLowerCase().includes("permission denied")) {
+          permissionIssue = true;
+        }
+      } else if (vData && vData.length > 0) {
+        rows = vData;
+      }
+
+      // 2. If no rows found yet, try ILIKE search on topic_key or aspect in view
+      if (!rows || rows.length === 0) {
+        const { data: vIlike, error: vIlikeErr } = await supabase
+          .from("absa_tweets_v")
+          .select("aspect, tweeted_at, text, cleaned_text, sentiment, p_pos, p_neg, p_neu, handle")
+          .or(`topic_key.ilike.%${topicKey}%,aspect.ilike.%${rawTopic}%`)
+          .order("tweeted_at", { ascending: false });
+
+        if (vIlikeErr) {
+          if (vIlikeErr.message?.toLowerCase().includes("permission denied")) {
+            permissionIssue = true;
+          }
+        } else if (vIlike && vIlike.length > 0) {
+          rows = vIlike;
+        }
+      }
+
+      // 3. Fallback: query raw table absa_tweets
+      if (!rows || rows.length === 0) {
+        const { data: tData, error: tErr } = await supabase
           .from("absa_tweets")
           .select('aspect, time, text, cleaned_text, "qwen2.5-3b-instruct_sentiment", qwen_prob_pos, qwen_prob_neg, qwen_prob_neu, "user"')
-          .eq("topic_key", topicKey)
+          .in("topic_key", candidateKeys)
           .order("time", { ascending: false });
 
-        if (directData && directData.length > 0) {
-          rows = directData.map((d) => ({
+        if (tErr) {
+          if (tErr.message?.toLowerCase().includes("permission denied")) {
+            permissionIssue = true;
+          }
+        } else if (tData && tData.length > 0) {
+          rows = tData.map((d) => ({
+            aspect: d.aspect,
+            tweeted_at: d.time,
+            text: d.text,
+            cleaned_text: d.cleaned_text,
+            sentiment: (d as Record<string, unknown>)["qwen2.5-3b-instruct_sentiment"] as string,
+            p_pos: d.qwen_prob_pos,
+            p_neg: d.qwen_prob_neg,
+            p_neu: d.qwen_prob_neu,
+            handle: (d as Record<string, unknown>)["user"] as string,
+          }));
+        }
+      }
+
+      // 4. Try raw table ILIKE fallback if still no rows
+      if (!rows || rows.length === 0) {
+        const { data: tIlike, error: tIlikeErr } = await supabase
+          .from("absa_tweets")
+          .select('aspect, time, text, cleaned_text, "qwen2.5-3b-instruct_sentiment", qwen_prob_pos, qwen_prob_neg, qwen_prob_neu, "user"')
+          .or(`topic_key.ilike.%${topicKey}%,aspect.ilike.%${rawTopic}%`)
+          .order("time", { ascending: false });
+
+        if (tIlikeErr) {
+          if (tIlikeErr.message?.toLowerCase().includes("permission denied")) {
+            permissionIssue = true;
+          }
+        } else if (tIlike && tIlike.length > 0) {
+          rows = tIlike.map((d) => ({
             aspect: d.aspect,
             tweeted_at: d.time,
             text: d.text,
@@ -177,6 +245,18 @@ export async function POST(req: NextRequest) {
     }
 
     if (!rows || rows.length === 0) {
+      if (permissionIssue) {
+        return NextResponse.json(
+          {
+            notFound: true,
+            permissionError: true,
+            message:
+              "Supabase returned 'permission denied' when reading database rows. Please execute the SQL grant snippet in your Supabase SQL Editor and ensure SUPABASE_SERVICE_ROLE_KEY is set to your project's service_role secret key.",
+          },
+          { status: 403 }
+        );
+      }
+
       return NextResponse.json(
         {
           notFound: true,
