@@ -14,12 +14,14 @@ export async function GET() {
       .limit(20);
 
     if (error) {
-      // If table/view does not exist yet or empty, return empty list gracefully
-      return NextResponse.json({ topics: [] });
+      return NextResponse.json({ topics: [], error: error.message });
     }
 
     return NextResponse.json({ topics: data || [] });
-  } catch {
-    return NextResponse.json({ topics: [] });
+  } catch (err: unknown) {
+    return NextResponse.json({
+      topics: [],
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 }
