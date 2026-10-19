@@ -213,4 +213,15 @@ with gr.Blocks() as demo:
 app = gr.mount_gradio_app(api, demo, path="/")  # note: API routes registered first
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=7860)
+    import time
+    port = int(os.environ.get("PORT", 7860))
+    for attempt in range(5):
+        try:
+            uvicorn.run(app, host="0.0.0.0", port=port)
+            break
+        except OSError as e:
+            if getattr(e, "errno", None) == 98 and attempt < 4:
+                print(f"[Port {port} busy, retrying in 3s (attempt {attempt + 1}/5)...]")
+                time.sleep(3)
+            else:
+                raise
