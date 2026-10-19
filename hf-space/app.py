@@ -229,15 +229,40 @@ with gr.Blocks(title="ABSA Studio Inference") as demo:
 app = gr.mount_gradio_app(api, demo, path="/")  # note: API routes registered first
 
 if __name__ == "__main__":
+    import socket
+    import subprocess
     import time
+
     port = int(os.environ.get("PORT", 7860))
+
+    # Clean up any lingering zombie process holding the port
+    try:
+        subprocess.run(f"fuser -k -9 {port}/tcp", shell=True, capture_output=True)
+        time.sleep(0.5)
+    except Exception:
+        pass
+
+    # Bind socket with SO_REUSEADDR and SO_REUSEPORT to eliminate Errno 98
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    if hasattr(socket, "SO_REUSEPORT"):
+        try:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        except Exception:
+            pass
+
     for attempt in range(5):
         try:
-            uvicorn.run(app, host="0.0.0.0", port=port)
+            sock.bind(("0.0.0.0", port))
             break
         except OSError as e:
             if getattr(e, "errno", None) == 98 and attempt < 4:
-                print(f"[Port {port} busy, retrying in 3s (attempt {attempt + 1}/5)...]")
-                time.sleep(3)
+                print(f"[Port {port} in TIME_WAIT, retrying in 2s ({attempt + 1}/5)...]")
+                time.sleep(2)
             else:
                 raise
+
+    sock.listen(128)
+    config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")
+    server = uvicorn.Server(config)
+    server.run(sockets=[sock])
