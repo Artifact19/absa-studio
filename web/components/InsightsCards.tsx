@@ -100,11 +100,11 @@ export function InsightsCards({ streamedText, isStreaming }: InsightsCardsProps)
   // If streaming just began and no text yet, show skeletons
   if (!streamedText && isStreaming) {
     return (
-      <section className="grid gap-4 md:grid-cols-2 animate-pulse">
-        <div className="md:col-span-2 h-28 rounded-2xl border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900" />
-        <div className="h-44 rounded-2xl border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900" />
-        <div className="h-44 rounded-2xl border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900" />
-        <div className="md:col-span-2 h-24 rounded-2xl border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900" />
+      <section className="grid gap-3 sm:gap-4 md:grid-cols-2 animate-pulse">
+        <div className="md:col-span-2 h-28 rounded-2xl border border-stone-200 bg-stone-100" />
+        <div className="h-44 rounded-2xl border border-stone-200 bg-stone-100" />
+        <div className="h-44 rounded-2xl border border-stone-200 bg-stone-100" />
+        <div className="md:col-span-2 h-24 rounded-2xl border border-stone-200 bg-stone-100" />
       </section>
     );
   }
@@ -112,57 +112,57 @@ export function InsightsCards({ streamedText, isStreaming }: InsightsCardsProps)
   // Fallback: If text exists but headings weren't parsed, render raw text
   if (streamedText && !parsed.isParsed) {
     return (
-      <section className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+      <section className="rounded-2xl border border-stone-200 bg-white/90 p-4 sm:p-6 shadow-xs">
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-700">
           <Sparkles className="h-4 w-4" />
           <span>Quick Summary</span>
         </div>
-        <div className="mt-3 whitespace-pre-wrap text-sm text-neutral-800 dark:text-neutral-200 leading-relaxed">
+        <div className="mt-3 whitespace-pre-wrap text-sm text-stone-800 leading-relaxed">
           {streamedText}
-          {isStreaming && <span className="inline-block animate-pulse text-indigo-600">▍</span>}
+          {isStreaming && <span className="inline-block animate-pulse text-amber-600">▍</span>}
         </div>
       </section>
     );
   }
 
   return (
-    <section className="grid gap-4 md:grid-cols-2">
+    <section className="grid gap-3 sm:gap-4 md:grid-cols-2">
       {/* 1. 10-Second Verdict */}
-      <article className="md:col-span-2 rounded-2xl border border-indigo-200/80 bg-indigo-50/60 p-6 shadow-sm dark:border-indigo-500/30 dark:bg-neutral-900">
+      <article className="md:col-span-2 rounded-2xl border border-amber-300/80 bg-amber-50/70 p-4 sm:p-6 shadow-xs">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Zap className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
+            <Zap className="h-4 w-4 text-amber-600" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-amber-800">
               10-Second Verdict
             </h3>
           </div>
           {isStreaming && !parsed.verdict && (
-            <span className="text-xs text-indigo-500 animate-pulse font-medium">Writing...</span>
+            <span className="text-xs text-amber-600 animate-pulse font-medium">Writing...</span>
           )}
         </div>
         {parsed.verdict ? (
-          <p className="mt-3 text-lg sm:text-xl font-bold leading-relaxed text-neutral-900 dark:text-neutral-50">
+          <p className="mt-2.5 sm:mt-3 text-base sm:text-xl font-bold leading-relaxed text-stone-900">
             {parsed.verdict}
           </p>
         ) : (
-          <div className="mt-3 h-10 rounded-lg bg-indigo-100/50 dark:bg-neutral-800 animate-pulse" />
+          <div className="mt-3 h-8 sm:h-10 rounded-lg bg-amber-100/60 animate-pulse" />
         )}
       </article>
 
       {/* 2. The Exciting */}
-      <article className="rounded-2xl border border-emerald-200/80 bg-emerald-50/60 p-6 shadow-sm dark:border-emerald-500/30 dark:bg-neutral-900">
+      <article className="rounded-2xl border border-emerald-200/80 bg-emerald-50/50 p-4 sm:p-6 shadow-xs">
         <div className="flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-          <h3 className="text-sm font-bold text-emerald-900 dark:text-emerald-300">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+          <h3 className="text-sm font-bold text-emerald-900">
             The Exciting
           </h3>
         </div>
         {parsed.exciting.length > 0 ? (
-          <ul className="mt-4 space-y-3">
+          <ul className="mt-3 sm:mt-4 space-y-2.5 sm:space-y-3">
             {parsed.exciting.map((item, idx) => (
-              <li key={idx} className="text-sm text-neutral-800 dark:text-neutral-200 leading-relaxed">
+              <li key={idx} className="text-xs sm:text-sm text-stone-800 leading-relaxed">
                 {item.theme && (
-                  <span className="font-bold text-emerald-700 dark:text-emerald-400 mr-1.5">
+                  <span className="font-bold text-emerald-800 mr-1.5">
                     [{item.theme}]
                   </span>
                 )}
@@ -172,26 +172,26 @@ export function InsightsCards({ streamedText, isStreaming }: InsightsCardsProps)
           </ul>
         ) : (
           <div className="mt-4 space-y-2 animate-pulse">
-            <div className="h-4 rounded bg-emerald-100/70 dark:bg-neutral-800 w-3/4" />
-            <div className="h-4 rounded bg-emerald-100/70 dark:bg-neutral-800 w-5/6" />
+            <div className="h-4 rounded bg-emerald-100/70 w-3/4" />
+            <div className="h-4 rounded bg-emerald-100/70 w-5/6" />
           </div>
         )}
       </article>
 
       {/* 3. The Frustrating */}
-      <article className="rounded-2xl border border-rose-200/80 bg-rose-50/60 p-6 shadow-sm dark:border-rose-500/30 dark:bg-neutral-900">
+      <article className="rounded-2xl border border-rose-200/80 bg-rose-50/50 p-4 sm:p-6 shadow-xs">
         <div className="flex items-center gap-2">
-          <AlertCircle className="h-4 w-4 text-rose-600 dark:text-rose-400" />
-          <h3 className="text-sm font-bold text-rose-900 dark:text-rose-300">
+          <AlertCircle className="h-4 w-4 text-rose-600" />
+          <h3 className="text-sm font-bold text-rose-900">
             The Frustrating
           </h3>
         </div>
         {parsed.frustrating.length > 0 ? (
-          <ul className="mt-4 space-y-3">
+          <ul className="mt-3 sm:mt-4 space-y-2.5 sm:space-y-3">
             {parsed.frustrating.map((item, idx) => (
-              <li key={idx} className="text-sm text-neutral-800 dark:text-neutral-200 leading-relaxed">
+              <li key={idx} className="text-xs sm:text-sm text-stone-800 leading-relaxed">
                 {item.theme && (
-                  <span className="font-bold text-rose-700 dark:text-rose-400 mr-1.5">
+                  <span className="font-bold text-rose-800 mr-1.5">
                     [{item.theme}]
                   </span>
                 )}
@@ -201,26 +201,26 @@ export function InsightsCards({ streamedText, isStreaming }: InsightsCardsProps)
           </ul>
         ) : (
           <div className="mt-4 space-y-2 animate-pulse">
-            <div className="h-4 rounded bg-rose-100/70 dark:bg-neutral-800 w-3/4" />
-            <div className="h-4 rounded bg-rose-100/70 dark:bg-neutral-800 w-5/6" />
+            <div className="h-4 rounded bg-rose-100/70 w-3/4" />
+            <div className="h-4 rounded bg-rose-100/70 w-5/6" />
           </div>
         )}
       </article>
 
       {/* 4. The Bottom Line */}
-      <article className="md:col-span-2 rounded-2xl border border-amber-300/80 bg-amber-50/60 p-6 shadow-sm dark:border-amber-500/40 dark:bg-neutral-900">
+      <article className="md:col-span-2 rounded-2xl border border-stone-200 bg-white/95 p-4 sm:p-6 shadow-xs">
         <div className="flex items-center gap-2">
-          <Compass className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-          <h3 className="text-sm font-bold text-amber-900 dark:text-amber-300">
+          <Compass className="h-4 w-4 text-amber-600" />
+          <h3 className="text-sm font-bold text-stone-900">
             The Bottom Line
           </h3>
         </div>
         {parsed.bottomLine ? (
-          <p className="mt-3 text-base sm:text-lg font-medium text-neutral-900 dark:text-neutral-100 leading-relaxed">
+          <p className="mt-2.5 sm:mt-3 text-sm sm:text-base font-medium text-stone-800 leading-relaxed">
             {parsed.bottomLine}
           </p>
         ) : (
-          <div className="mt-3 h-6 rounded bg-amber-200/50 dark:bg-neutral-800 animate-pulse w-2/3" />
+          <div className="mt-3 h-6 rounded bg-stone-200/50 animate-pulse w-2/3" />
         )}
       </article>
     </section>

@@ -21,7 +21,7 @@ export function TimeWindowChips({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label="Time window selector">
+    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2" role="tablist" aria-label="Time window selector">
       {availableWindows.map((win) => {
         const isSelected = win.id === selectedWindowId;
 
@@ -33,18 +33,18 @@ export function TimeWindowChips({
             aria-selected={isSelected}
             disabled={isLoading}
             onClick={() => onSelectWindow(win.id)}
-            className={`group inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-all duration-150 ${
+            className={`group inline-flex items-center gap-1.5 rounded-full px-3 sm:px-3.5 py-1.5 text-xs font-medium transition-all duration-150 ${
               isSelected
-                ? "bg-neutral-900 text-white shadow-sm ring-1 ring-neutral-900 dark:bg-neutral-100 dark:text-neutral-900 dark:ring-neutral-100"
-                : "border border-neutral-200 bg-white/80 text-neutral-600 hover:border-neutral-300 hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-400 dark:hover:border-neutral-700 dark:hover:bg-neutral-850"
+                ? "bg-stone-900 text-white shadow-xs ring-1 ring-stone-900"
+                : "border border-stone-200 bg-white/90 text-stone-700 hover:border-amber-300 hover:bg-stone-50"
             } ${isLoading ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
           >
-            <span>{win.label}</span>
+            <span className="truncate max-w-[280px] sm:max-w-none">{win.label}</span>
             <span
               className={`rounded-full px-1.5 py-0.2 text-[10px] tabular-nums font-semibold ${
                 isSelected
-                  ? "bg-white/20 text-white dark:bg-neutral-900/30 dark:text-neutral-900"
-                  : "bg-neutral-100 text-neutral-500 group-hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-400 dark:group-hover:bg-neutral-750"
+                  ? "bg-white/25 text-white"
+                  : "bg-stone-100 text-stone-600 group-hover:bg-amber-100/70 group-hover:text-amber-900"
               }`}
             >
               {win.n.toLocaleString()}

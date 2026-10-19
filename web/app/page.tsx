@@ -186,16 +186,16 @@ export default function HomePage() {
   const isResultsView = Boolean(analyzedData || notFoundMessage || errorMessage);
 
   return (
-    <div className="min-h-screen bg-neutral-50/50 text-neutral-900 selection:bg-indigo-500 selection:text-white dark:bg-neutral-950 dark:text-neutral-100">
+    <div className="min-h-screen bg-[#faf8f5] text-stone-900 selection:bg-amber-100 selection:text-stone-900">
       {/* Top Navigation Bar */}
       <header
-        className={`w-full border-b border-neutral-200/80 bg-white/80 backdrop-blur-md transition-all dark:border-neutral-800 dark:bg-neutral-950/80 ${
+        className={`w-full border-b border-stone-200/80 bg-[#faf8f5]/85 backdrop-blur-md transition-all ${
           isResultsView ? "sticky top-0 z-40 shadow-xs" : ""
         }`}
       >
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
-          <Link href="/" className="flex items-center gap-2.5 font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
-            <div className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-xl border border-neutral-200/80 bg-neutral-100 shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
+          <Link href="/" className="flex items-center gap-2 sm:gap-2.5 font-bold tracking-tight text-stone-900">
+            <div className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-xl border border-amber-200/70 bg-amber-50/60 shadow-2xs">
               <Image
                 src="/cat-icon.png"
                 alt="ABSA Studio Cat Icon"
@@ -208,11 +208,11 @@ export default function HomePage() {
             <span className="text-base sm:text-lg">ABSA Studio</span>
           </Link>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {signedInEmail ? (
-              <span className="inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-white/80 px-3 py-1.5 text-xs font-semibold text-neutral-700 shadow-2xs dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300">
-                <Check className="h-3.5 w-3.5 text-emerald-500" />
-                <span>{signedInEmail}</span>
+              <span className="inline-flex items-center gap-1.5 rounded-xl border border-stone-200 bg-white/90 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-2xs max-w-[140px] xs:max-w-[200px] sm:max-w-none">
+                <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                <span className="truncate">{signedInEmail}</span>
               </span>
             ) : (
               <button
@@ -221,9 +221,9 @@ export default function HomePage() {
                   setAuthError("");
                   setIsAuthModalOpen(true);
                 }}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-white/80 px-3 py-1.5 text-xs font-semibold text-neutral-700 shadow-2xs hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-850 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-stone-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-50 hover:text-stone-900 transition-colors"
               >
-                <UserRound className="h-3.5 w-3.5 text-indigo-500" />
+                <UserRound className="h-3.5 w-3.5 text-amber-600" />
                 <span>Sign In</span>
               </button>
             )}
@@ -232,7 +232,7 @@ export default function HomePage() {
       </header>
 
       {/* Main Content Area */}
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+      <main className="mx-auto max-w-6xl px-4 py-4 sm:py-6 sm:px-6">
         {/* Search Bar - Centers in hero mode, shrinks in compact results mode */}
         <SearchBar
           initialTopic={analyzedData?.topic || ""}
@@ -244,22 +244,22 @@ export default function HomePage() {
 
         {/* Cold Start / Warmup Notice */}
         {warmupMessage && (
-          <div className="mx-auto mt-4 max-w-2xl flex items-center gap-2 rounded-xl border border-amber-300/40 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-700/40 dark:bg-amber-950/30 dark:text-amber-300">
-            <RefreshCw className="h-4 w-4 animate-spin text-amber-600 dark:text-amber-400" />
+          <div className="mx-auto mt-4 max-w-2xl flex items-center gap-2 rounded-xl border border-amber-300/60 bg-amber-50 p-3 text-xs text-amber-900">
+            <RefreshCw className="h-4 w-4 animate-spin text-amber-600 shrink-0" />
             <span>{warmupMessage}</span>
           </div>
         )}
 
         {/* Friendly Empty State */}
         {notFoundMessage && !analyzedData && (
-          <div className="mx-auto mt-10 max-w-xl rounded-2xl border border-neutral-200 bg-white p-8 text-center shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400">
+          <div className="mx-auto mt-8 sm:mt-10 max-w-xl rounded-2xl border border-stone-200 bg-white p-6 sm:p-8 text-center shadow-xs">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-600">
               <Sparkles className="h-6 w-6" />
             </div>
-            <h2 className="mt-4 text-base font-bold text-neutral-900 dark:text-neutral-100">
+            <h2 className="mt-4 text-base font-bold text-stone-900">
               No posts found yet
             </h2>
-            <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
+            <p className="mt-2 text-xs sm:text-sm text-stone-600 leading-relaxed">
               {notFoundMessage}
             </p>
           </div>
@@ -267,14 +267,14 @@ export default function HomePage() {
 
         {/* Error State */}
         {errorMessage && !analyzedData && (
-          <div className="mx-auto mt-10 max-w-xl rounded-2xl border border-rose-200 bg-rose-50/50 p-6 text-center shadow-xs dark:border-rose-900/60 dark:bg-rose-950/20">
-            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 text-rose-600 dark:bg-rose-900/50 dark:text-rose-400">
+          <div className="mx-auto mt-8 sm:mt-10 max-w-xl rounded-2xl border border-rose-200 bg-rose-50/60 p-5 sm:p-6 text-center shadow-xs">
+            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 text-rose-600">
               <AlertCircle className="h-5 w-5" />
             </div>
-            <h2 className="mt-3 text-sm font-bold text-rose-900 dark:text-rose-200">
+            <h2 className="mt-3 text-sm font-bold text-rose-900">
               Notice
             </h2>
-            <p className="mt-1 text-xs text-rose-700 dark:text-rose-300">
+            <p className="mt-1 text-xs text-rose-700">
               {errorMessage}
             </p>
           </div>
@@ -282,19 +282,19 @@ export default function HomePage() {
 
         {/* Analyzed Dashboard Results */}
         {analyzedData && (
-          <div className="mt-8 space-y-8 animate-in fade-in duration-300">
+          <div className="mt-6 sm:mt-8 space-y-6 sm:space-y-8 animate-in fade-in duration-300">
             {/* Header: Aspect title, Provenance Badge, Velocity */}
-            <div className="flex flex-col gap-4 border-b border-neutral-200/80 pb-6 sm:flex-row sm:items-center sm:justify-between dark:border-neutral-800">
+            <div className="flex flex-col gap-3 sm:gap-4 border-b border-stone-200/80 pb-5 sm:pb-6 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                <div className="text-xs font-semibold uppercase tracking-wider text-amber-700">
                   Topic
                 </div>
-                <h2 className="text-3xl font-extrabold text-neutral-900 dark:text-neutral-50">
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-stone-900 break-words">
                   {analyzedData.aspect}
                 </h2>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <ProvenanceBadge count={analyzedData.counts.total} />
                 <VelocityBadge velocity={analyzedData.velocity} />
               </div>
@@ -302,7 +302,7 @@ export default function HomePage() {
 
             {/* Time Window Chips */}
             <div className="space-y-2">
-              <div className="text-xs font-medium text-neutral-400">Time period:</div>
+              <div className="text-xs font-medium text-stone-500">Time period:</div>
               <TimeWindowChips
                 availableWindows={analyzedData.availableWindows}
                 selectedWindowId={selectedWindowId}
@@ -317,12 +317,12 @@ export default function HomePage() {
             {/* Executive Brief */}
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                <h3 className="text-base font-bold text-neutral-900 dark:text-neutral-100">
+                <Sparkles className="h-4 w-4 text-amber-600" />
+                <h3 className="text-base font-bold text-stone-900">
                   Quick Summary
                 </h3>
                 {isStreamingInsights && (
-                  <span className="text-xs text-indigo-500 animate-pulse font-medium">
+                  <span className="text-xs text-amber-700 animate-pulse font-medium">
                     (Writing summary...)
                   </span>
                 )}
@@ -335,7 +335,7 @@ export default function HomePage() {
 
             {/* Evidence Cards */}
             <div className="space-y-3">
-              <h3 className="text-base font-bold text-neutral-900 dark:text-neutral-100">
+              <h3 className="text-base font-bold text-stone-900">
                 Real Tweets & Posts
               </h3>
               <EvidenceList
@@ -349,36 +349,36 @@ export default function HomePage() {
 
       {/* Sign In / Sign Up Modal */}
       {isAuthModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="relative w-full max-w-sm rounded-3xl border border-neutral-200 bg-white p-7 shadow-2xl dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+          <div className="relative w-full max-w-sm rounded-3xl border border-stone-200 bg-white p-6 sm:p-7 shadow-2xl">
             <button
               type="button"
               onClick={() => setIsAuthModalOpen(false)}
-              className="absolute right-4 top-4 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
+              className="absolute right-4 top-4 text-stone-400 hover:text-stone-600"
             >
               <X className="h-4 w-4" />
             </button>
 
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
               <UserRound className="h-5 w-5" />
             </div>
 
-            <h3 className="mt-3 text-lg font-bold text-neutral-900 dark:text-neutral-100">
+            <h3 className="mt-3 text-lg font-bold text-stone-900">
               Sign In
             </h3>
-            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+            <p className="mt-1 text-xs text-stone-500">
               Enter your email and passkey to access your profile.
             </p>
 
             {authError && (
-              <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-2.5 text-xs text-rose-600 dark:text-rose-300">
+              <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-2.5 text-xs text-rose-700">
                 {authError}
               </div>
             )}
 
             <form onSubmit={handleSignInSubmit} className="mt-4 space-y-3.5">
               <div>
-                <label className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-400">
+                <label className="text-[11px] font-semibold text-stone-600">
                   Email address
                 </label>
                 <input
@@ -388,12 +388,12 @@ export default function HomePage() {
                   value={authEmail}
                   onChange={(e) => setAuthEmail(e.target.value)}
                   placeholder="name@example.com"
-                  className="mt-1 w-full rounded-xl border border-neutral-200 bg-neutral-50/50 px-3 py-2 text-xs text-neutral-900 focus:border-indigo-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                  className="mt-1 w-full rounded-xl border border-stone-200 bg-stone-50/50 px-3 py-2 text-xs text-stone-900 focus:border-amber-600 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-400">
+                <label className="text-[11px] font-semibold text-stone-600">
                   Passkey
                 </label>
                 <input
@@ -402,14 +402,14 @@ export default function HomePage() {
                   value={authPasskey}
                   onChange={(e) => setAuthPasskey(e.target.value)}
                   placeholder="••••••••••••"
-                  className="mt-1 w-full rounded-xl border border-neutral-200 bg-neutral-50/50 px-3 py-2 text-xs text-neutral-900 focus:border-indigo-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                  className="mt-1 w-full rounded-xl border border-stone-200 bg-stone-50/50 px-3 py-2 text-xs text-stone-900 focus:border-amber-600 focus:outline-none"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={isSigningIn}
-                className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700 disabled:opacity-50 transition-all mt-2"
+                className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-amber-600 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-amber-700 active:scale-95 disabled:opacity-50 transition-all mt-2"
               >
                 {isSigningIn ? (
                   <>
@@ -426,7 +426,7 @@ export default function HomePage() {
       )}
 
       {/* Footer */}
-      <footer className="mt-20 border-t border-neutral-200/80 py-8 text-center text-xs text-neutral-400 dark:border-neutral-800">
+      <footer className="mt-16 sm:mt-20 border-t border-stone-200/80 py-8 text-center text-xs text-stone-500">
         <div className="mx-auto max-w-6xl px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p>© 2026 Target-Oriented ABSA Studio.</p>
           <div className="flex items-center gap-4">
@@ -434,7 +434,7 @@ export default function HomePage() {
               href="https://fetchlayer.dev"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-neutral-600 dark:hover:text-neutral-300"
+              className="hover:text-stone-800"
             >
               FetchLayer ↗
             </a>

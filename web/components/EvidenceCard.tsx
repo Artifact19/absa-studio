@@ -24,12 +24,12 @@ export function EvidenceCard({ evidence, sentiment }: EvidenceCardProps) {
       ? "bg-emerald-500"
       : sentiment === "negative"
       ? "bg-rose-500"
-      : "bg-slate-400";
+      : "bg-stone-400";
 
   return (
-    <article className="rounded-xl border border-neutral-200/80 bg-white/60 p-4 shadow-sm backdrop-blur-sm transition-all hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900/60 dark:hover:border-neutral-700">
-      <header className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
-        <span className="font-semibold text-neutral-900 dark:text-neutral-100">
+    <article className="rounded-xl border border-stone-200/90 bg-white/95 p-3.5 sm:p-4 shadow-2xs transition-all hover:border-amber-300">
+      <header className="flex items-center justify-between text-xs text-stone-500">
+        <span className="font-semibold text-stone-900">
           @{safeHandle}
         </span>
         <time dateTime={evidence.time} title={absTime} className="cursor-help">
@@ -38,7 +38,7 @@ export function EvidenceCard({ evidence, sentiment }: EvidenceCardProps) {
       </header>
 
       {/* Tweet text rendered as plain React text node (auto-escaped, line-clamp-4) */}
-      <p className="mt-2 line-clamp-4 whitespace-pre-wrap break-words text-sm text-neutral-700 dark:text-neutral-300">
+      <p className="mt-2 line-clamp-4 whitespace-pre-wrap break-words text-xs sm:text-sm text-stone-700 leading-relaxed">
         {evidence.text}
       </p>
 
@@ -51,13 +51,13 @@ export function EvidenceCard({ evidence, sentiment }: EvidenceCardProps) {
         aria-valuenow={pct}
         aria-label={`Confidence ${pct}%`}
       >
-        <div className="h-1.5 flex-1 rounded-full bg-neutral-200 dark:bg-neutral-800 overflow-hidden">
+        <div className="h-1.5 flex-1 rounded-full bg-stone-200 overflow-hidden">
           <div
             className={`h-full rounded-full transition-all duration-300 ${toneColor}`}
             style={{ width: `${pct}%` }}
           />
         </div>
-        <span className="w-10 text-right text-xs font-semibold tabular-nums text-neutral-600 dark:text-neutral-400">
+        <span className="w-10 text-right text-xs font-semibold tabular-nums text-stone-600">
           {pct}%
         </span>
       </div>

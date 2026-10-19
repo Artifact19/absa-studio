@@ -34,15 +34,15 @@ export function SentimentSummary({ data }: SentimentSummaryProps) {
   }[weighted.verdict];
 
   return (
-    <div className="rounded-2xl border border-neutral-200/80 bg-white/70 p-6 shadow-sm backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-900/70">
+    <div className="rounded-2xl border border-stone-200/90 bg-white/90 p-4 sm:p-6 shadow-xs backdrop-blur-md">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+          <div className="text-xs font-semibold uppercase tracking-wider text-stone-500">
             Overall Public Feeling
           </div>
           <div className="mt-1.5 flex items-center gap-3">
             <span
-              className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-1.5 text-base font-bold capitalize ${verdictStyles.badge}`}
+              className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-1.5 text-sm sm:text-base font-bold capitalize ${verdictStyles.badge}`}
             >
               <span className={`h-2.5 w-2.5 rounded-full ${verdictStyles.dot}`} />
               Mostly {weighted.verdict}
@@ -51,25 +51,25 @@ export function SentimentSummary({ data }: SentimentSummaryProps) {
         </div>
 
         <div className="text-left sm:text-right">
-          <div className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+          <div className="text-xs font-semibold uppercase tracking-wider text-stone-500">
             Total Posts
           </div>
-          <div className="mt-1 text-2xl font-black text-neutral-900 dark:text-neutral-100 tabular-nums">
-            {counts.total.toLocaleString()} <span className="text-xs font-normal text-neutral-500">posts</span>
+          <div className="mt-1 text-xl sm:text-2xl font-black text-stone-900 tabular-nums">
+            {counts.total.toLocaleString()} <span className="text-xs font-normal text-stone-500">posts</span>
           </div>
         </div>
       </div>
 
       {/* Segmented Progress Bar */}
       <div className="mt-6">
-        <div className="flex h-3 w-full overflow-hidden rounded-full bg-neutral-100 p-0.5 dark:bg-neutral-800">
+        <div className="flex h-3 w-full overflow-hidden rounded-full bg-stone-100 p-0.5">
           <div
             className="h-full rounded-l-full bg-emerald-500 transition-all duration-500"
             style={{ width: `${weighted.pctPos}%` }}
             title={`Positive: ${weighted.pctPos}% (raw ${rawPosPct}%)`}
           />
           <div
-            className="h-full bg-slate-400 dark:bg-slate-600 transition-all duration-500"
+            className="h-full bg-stone-400 transition-all duration-500"
             style={{ width: `${weighted.pctNeu}%` }}
             title={`Neutral: ${weighted.pctNeu}% (raw ${rawNeuPct}%)`}
           />
@@ -81,37 +81,37 @@ export function SentimentSummary({ data }: SentimentSummaryProps) {
         </div>
 
         {/* Legend with raw vs recency weighted shares */}
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="flex items-center justify-between rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-xs">
-            <span className="flex items-center gap-2 font-medium text-emerald-800 dark:text-emerald-300">
+        <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+          <div className="flex items-center justify-between rounded-xl border border-emerald-500/20 bg-emerald-50/50 px-3 py-2 text-xs">
+            <span className="flex items-center gap-2 font-medium text-emerald-900">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
               Positive
             </span>
-            <span className="text-neutral-700 dark:text-neutral-300">
-              <strong className="font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">{rawPosPct}%</strong>{" "}
-              <span className="text-[11px] text-neutral-500">(weighted {weighted.pctPos}%)</span>
+            <span className="text-stone-700">
+              <strong className="font-bold text-emerald-800 tabular-nums">{rawPosPct}%</strong>{" "}
+              <span className="text-[11px] text-stone-500">(weighted {weighted.pctPos}%)</span>
             </span>
           </div>
 
-          <div className="flex items-center justify-between rounded-xl border border-slate-500/20 bg-slate-500/5 px-3 py-2 text-xs">
-            <span className="flex items-center gap-2 font-medium text-slate-700 dark:text-slate-300">
-              <span className="h-2 w-2 rounded-full bg-slate-400" />
+          <div className="flex items-center justify-between rounded-xl border border-stone-300/80 bg-stone-100/60 px-3 py-2 text-xs">
+            <span className="flex items-center gap-2 font-medium text-stone-700">
+              <span className="h-2 w-2 rounded-full bg-stone-400" />
               Neutral
             </span>
-            <span className="text-neutral-700 dark:text-neutral-300">
-              <strong className="font-bold text-slate-700 dark:text-slate-300 tabular-nums">{rawNeuPct}%</strong>{" "}
-              <span className="text-[11px] text-neutral-500">(weighted {weighted.pctNeu}%)</span>
+            <span className="text-stone-700">
+              <strong className="font-bold text-stone-800 tabular-nums">{rawNeuPct}%</strong>{" "}
+              <span className="text-[11px] text-stone-500">(weighted {weighted.pctNeu}%)</span>
             </span>
           </div>
 
-          <div className="flex items-center justify-between rounded-xl border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-xs">
-            <span className="flex items-center gap-2 font-medium text-rose-800 dark:text-rose-300">
+          <div className="flex items-center justify-between rounded-xl border border-rose-500/20 bg-rose-50/50 px-3 py-2 text-xs">
+            <span className="flex items-center gap-2 font-medium text-rose-900">
               <span className="h-2 w-2 rounded-full bg-rose-500" />
               Negative
             </span>
-            <span className="text-neutral-700 dark:text-neutral-300">
-              <strong className="font-bold text-rose-700 dark:text-rose-400 tabular-nums">{rawNegPct}%</strong>{" "}
-              <span className="text-[11px] text-neutral-500">(weighted {weighted.pctNeg}%)</span>
+            <span className="text-stone-700">
+              <strong className="font-bold text-rose-800 tabular-nums">{rawNegPct}%</strong>{" "}
+              <span className="text-[11px] text-stone-500">(weighted {weighted.pctNeg}%)</span>
             </span>
           </div>
         </div>
