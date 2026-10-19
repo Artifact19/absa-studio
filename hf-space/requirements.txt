@@ -1,5 +1,4 @@
-# `spaces` and `gradio` are preinstalled on Gradio Spaces; do not pin them.
-torch==2.4.0
+# `spaces`, `gradio`, and `torch` (CUDA) are preinstalled in Hugging Face Spaces.
 transformers>=4.45.0,<5
 accelerate>=0.34.0
 bitsandbytes>=0.43.3
