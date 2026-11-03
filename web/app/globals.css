@@ -1,12 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  --background: #faf8f5;
-  --foreground: #1c1917;
-  --card: #ffffff;
-  --card-foreground: #1c1917;
-  --border: #e7e5e4;
-  --ring: #d97706;
+  --background: #edf1f7;
+  --foreground: #0f172a;
+  --card: rgba(255, 255, 255, 0.72);
+  --card-foreground: #0f172a;
+  --border: rgba(255, 255, 255, 0.85);
+  --ring: #6c94cc;
+  --accent-blue: #6c94cc;
+  --accent-blue-hover: #5b83bc;
 }
 
 @theme inline {
@@ -17,26 +19,127 @@
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(219, 234, 254, 0.45) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(224, 231, 255, 0.4) 0px, transparent 50%),
+    radial-gradient(at 50% 100%, rgba(238, 242, 255, 0.5) 0px, transparent 50%);
+  background-attachment: fixed;
 }
 
-/* Warm custom scrollbar */
+/* =========================================================================
+   Liquid Frosted Glass System (VisionOS / Apple-style Glassmorphism)
+   ========================================================================= */
+
+/* Primary Glass Panel for Cards and Containers */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 
+    0 12px 36px -6px rgba(15, 23, 42, 0.05),
+    inset 0 1px 1.5px rgba(255, 255, 255, 0.95),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.02);
+}
+
+/* Elevated Glass Modal / Floating Card */
+.glass-elevated {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 
+    0 24px 48px -12px rgba(15, 23, 42, 0.12),
+    0 8px 16px -4px rgba(15, 23, 42, 0.04),
+    inset 0 1px 2px rgba(255, 255, 255, 1);
+}
+
+/* Frosted Glass Pill Capsule */
+.glass-pill {
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 
+    0 4px 14px rgba(15, 23, 42, 0.03),
+    inset 0 1px 1.5px rgba(255, 255, 255, 0.95);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-pill:hover {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(255, 255, 255, 0.95);
+  box-shadow: 
+    0 6px 18px rgba(15, 23, 42, 0.06),
+    inset 0 1px 1.5px rgba(255, 255, 255, 1);
+}
+
+/* Active Segment / Button (Periwinkle Blue Accent matching Image 1) */
+.glass-pill-active {
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #7b9ec9 0%, #638cc5 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow: 
+    0 6px 20px -2px rgba(108, 148, 204, 0.45),
+    inset 0 1px 1.5px rgba(255, 255, 255, 0.55);
+}
+
+.glass-pill-active:hover {
+  background: linear-gradient(135deg, #7094bf 0%, #5880b9 100%);
+}
+
+/* Pill Input Bar (Matching Image 1 Search Capsule) */
+.glass-input {
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.80);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 
+    inset 0 2px 4px rgba(15, 23, 42, 0.02),
+    inset 0 1px 1.5px rgba(255, 255, 255, 0.95),
+    0 6px 20px rgba(15, 23, 42, 0.04);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-input:focus-within, .glass-input:focus {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: #6c94cc;
+  box-shadow: 
+    0 0 0 4px rgba(108, 148, 204, 0.18),
+    0 8px 24px rgba(15, 23, 42, 0.06),
+    inset 0 1px 1.5px rgba(255, 255, 255, 1);
+}
+
+/* Glass Track Container (Segmented Controls) */
+.glass-track {
+  border-radius: 9999px;
+  background: rgba(226, 232, 240, 0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: inset 0 1.5px 3px rgba(15, 23, 42, 0.05);
+}
+
+/* Frosted custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #faf8f5;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #d6d3d1;
+  background: rgba(148, 163, 184, 0.45);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8a29e;
+  background: rgba(100, 116, 139, 0.65);
 }
-

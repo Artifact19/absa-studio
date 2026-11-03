@@ -4,9 +4,24 @@ import { normalizeTopicKey, sanitizeHandle } from "@/lib/clean";
 import { hfStream } from "@/lib/hf";
 import { computeDynamicWindows, filterTweetsByWindow, calculateWeightedSentiment, RawTweetItem } from "@/lib/analytics";
 import { TimeWindowId, HFSynthReq, SentimentLabel } from "@/lib/types";
+import { checkPublicEndpointRateLimit } from "@/lib/ratelimit";
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
+    const rl = checkPublicEndpointRateLimit(ip);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Please wait a few moments before generating insights again." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(rl.retryAfterSeconds),
+          },
+        }
+      );
+    }
+
     const body = await req.json().catch(() => ({}));
     const rawTopic = (body.topic || "").trim();
     const requestedWindow = (body.window as TimeWindowId) || undefined;

@@ -3,6 +3,7 @@ os.environ["GRADIO_SSR_MODE"] = "false"
 import json
 import threading
 import re
+import hmac
 from typing import List, Optional
 
 try:
@@ -52,8 +53,9 @@ def _first_ids(word: str) -> List[int]:
 LABEL_IDS = [_first_ids(w) for w in LABELS]
 
 def verify(x_api_key: Optional[str] = Header(None)):
-    if API_SECRET and x_api_key != API_SECRET:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    if API_SECRET:
+        if not x_api_key or not hmac.compare_digest(x_api_key, API_SECRET):
+            raise HTTPException(status_code=401, detail="Unauthorized")
 
 def chat(system: str, user: str) -> str:
     return tok.apply_chat_template(

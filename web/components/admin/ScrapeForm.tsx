@@ -69,56 +69,45 @@ export function ScrapeForm({ onJobComplete }: ScrapeFormProps) {
         buffer = lines.pop() || "";
 
         for (const line of lines) {
-          if (!line.trim()) continue;
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+
           try {
-            const event = JSON.parse(line) as ScrapeProgress;
-            setProgress(event);
-            if (event.message) {
-              setLogMessages((prev) => [...prev.slice(-10), event.message!]);
+            const data = JSON.parse(trimmed);
+            setProgress(data);
+
+            if (data.message) {
+              setLogMessages((prev) => [...prev.slice(-30), data.message]);
+            }
+
+            if (data.stage === "completed") {
+              onJobComplete();
             }
           } catch {
-            // Ignore non-json chunk
+            // Ignore malformed json stream frames
           }
         }
       }
-
-      onJobComplete();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Scrape job failed";
-      setLogMessages((prev) => [...prev, `Error: ${msg}`]);
-      setProgress((prev) => ({
-        stage: "error",
-        done: prev?.done || 0,
-        total: tweetCount,
-        message: msg,
-      }));
+      const errorMsg = err instanceof Error ? err.message : "Scraper execution failed";
+      setProgress({ stage: "error", done: 0, total: tweetCount, message: errorMsg });
+      setLogMessages((prev) => [...prev, `[ERROR] ${errorMsg}`]);
     } finally {
       setIsRunning(false);
     }
   };
 
   const progressPct = progress
-    ? Math.min(100, Math.max(0, Math.round((progress.done / (progress.total || 1)) * 100)))
+    ? Math.min(100, Math.round((progress.done / (progress.total || 1)) * 100))
     : 0;
 
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-white/70 p-5 shadow-xs backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-900/70">
-      <div className="flex items-center justify-between border-b border-neutral-200/80 pb-3 dark:border-neutral-800">
-        <div>
-          <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">
-            Manual Scrape & Ingestion Pipeline
-          </h3>
-          <p className="text-xs text-neutral-500">
-            Fetch fresh tweets via FetchLayer, deduplicate against Supabase, and classify with Qwen2.5-3B.
-          </p>
-        </div>
-      </div>
-
-      <form onSubmit={handleStartScrape} className="mt-4 space-y-4">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="rounded-3xl glass-panel p-6 shadow-xs">
+      <form onSubmit={handleStartScrape} className="space-y-4">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
           {/* Query */}
           <div className="lg:col-span-2">
-            <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+            <label className="text-xs font-semibold text-slate-600">
               Search Query *
             </label>
             <input
@@ -128,13 +117,13 @@ export function ScrapeForm({ onJobComplete }: ScrapeFormProps) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="e.g. iPhone 17 or #Nvidia"
-              className="mt-1 w-full rounded-xl border border-neutral-200 bg-white/80 px-3 py-2 text-xs text-neutral-900 placeholder:text-neutral-400 focus:border-indigo-500 focus:outline-none dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
+              className="mt-1 w-full rounded-full glass-input px-4 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none"
             />
           </div>
 
           {/* Tweet Count */}
           <div>
-            <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+            <label className="text-xs font-semibold text-slate-600">
               Tweet Count (1-500)
             </label>
             <input
@@ -144,13 +133,13 @@ export function ScrapeForm({ onJobComplete }: ScrapeFormProps) {
               disabled={isRunning}
               value={tweetCount}
               onChange={(e) => setTweetCount(parseInt(e.target.value, 10) || 100)}
-              className="mt-1 w-full rounded-xl border border-neutral-200 bg-white/80 px-3 py-2 text-xs text-neutral-900 focus:border-indigo-500 focus:outline-none dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
+              className="mt-1 w-full rounded-full glass-input px-4 py-2 text-xs text-slate-900 focus:outline-none"
             />
           </div>
 
           {/* Topic Override */}
           <div>
-            <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+            <label className="text-xs font-semibold text-slate-600">
               Topic Key Override (Optional)
             </label>
             <input
@@ -159,14 +148,14 @@ export function ScrapeForm({ onJobComplete }: ScrapeFormProps) {
               value={topicOverride}
               onChange={(e) => setTopicOverride(e.target.value)}
               placeholder="Leave blank for auto-detect"
-              className="mt-1 w-full rounded-xl border border-neutral-200 bg-white/80 px-3 py-2 text-xs text-neutral-900 placeholder:text-neutral-400 focus:border-indigo-500 focus:outline-none dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
+              className="mt-1 w-full rounded-full glass-input px-4 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none"
             />
           </div>
         </div>
 
         {/* Optional Custom FetchLayer Key */}
         <div>
-          <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+          <label className="text-xs font-semibold text-slate-600">
             FetchLayer API Key (Optional override; uses server env if omitted)
           </label>
           <input
@@ -175,7 +164,7 @@ export function ScrapeForm({ onJobComplete }: ScrapeFormProps) {
             value={fetchlayerKey}
             onChange={(e) => setFetchlayerKey(e.target.value)}
             placeholder="fl_live_..."
-            className="mt-1 w-full rounded-xl border border-neutral-200 bg-white/80 px-3 py-2 text-xs text-neutral-900 placeholder:text-neutral-400 focus:border-indigo-500 focus:outline-none dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
+            className="mt-1 w-full rounded-full glass-input px-4 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none"
           />
         </div>
 
@@ -183,11 +172,11 @@ export function ScrapeForm({ onJobComplete }: ScrapeFormProps) {
           <button
             type="submit"
             disabled={isRunning || !query.trim()}
-            className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50 disabled:pointer-events-none transition-all"
+            className="flex items-center gap-2 rounded-full glass-pill-active px-6 py-2.5 text-xs font-semibold shadow-xs disabled:opacity-50 disabled:pointer-events-none transition-all cursor-pointer"
           >
             {isRunning ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin text-white" />
                 <span>Processing Pipeline...</span>
               </>
             ) : (
@@ -199,7 +188,7 @@ export function ScrapeForm({ onJobComplete }: ScrapeFormProps) {
           </button>
 
           {isRunning && (
-            <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400 animate-pulse">
+            <span className="text-xs font-semibold text-[#6c94cc] animate-pulse">
               Stage: {progress?.stage || "processing"}
             </span>
           )}
@@ -208,41 +197,41 @@ export function ScrapeForm({ onJobComplete }: ScrapeFormProps) {
 
       {/* Live Stream Progress Bar & Activity Log */}
       {progress && (
-        <div className="mt-5 space-y-3 rounded-xl border border-neutral-200 bg-neutral-50/60 p-4 dark:border-neutral-800 dark:bg-neutral-950/40">
+        <div className="mt-5 space-y-3 rounded-2xl glass-panel p-4">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-semibold text-neutral-700 dark:text-neutral-300 capitalize flex items-center gap-1.5">
+            <span className="font-semibold text-slate-700 capitalize flex items-center gap-1.5">
               {progress.stage === "completed" ? (
                 <CheckCircle2 className="h-4 w-4 text-emerald-500" />
               ) : progress.stage === "error" ? (
                 <AlertCircle className="h-4 w-4 text-rose-500" />
               ) : (
-                <RefreshCw className="h-3.5 w-3.5 animate-spin text-indigo-500" />
+                <RefreshCw className="h-3.5 w-3.5 animate-spin text-[#6c94cc]" />
               )}
               Status: {progress.stage}
             </span>
-            <span className="font-mono tabular-nums text-neutral-500">
+            <span className="font-mono tabular-nums text-slate-500 font-semibold">
               {progress.done} / {progress.total} ({progressPct}%)
             </span>
           </div>
 
-          <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
+          <div className="h-2 w-full overflow-hidden rounded-full glass-track p-0.5">
             <div
-              className={`h-full transition-all duration-300 ${
+              className={`h-full rounded-full transition-all duration-300 ${
                 progress.stage === "error"
                   ? "bg-rose-500"
                   : progress.stage === "completed"
                   ? "bg-emerald-500"
-                  : "bg-indigo-600"
+                  : "bg-[#6c94cc]"
               }`}
               style={{ width: `${progressPct}%` }}
             />
           </div>
 
           {/* Activity terminal log */}
-          <div className="rounded-lg bg-neutral-900 p-3 font-mono text-[11px] text-neutral-300 dark:bg-black space-y-1 max-h-32 overflow-y-auto">
+          <div className="rounded-xl bg-slate-900 p-3 font-mono text-[11px] text-slate-300 space-y-1 max-h-32 overflow-y-auto">
             {logMessages.map((msg, i) => (
               <div key={i} className="flex gap-2">
-                <span className="text-neutral-500 select-none">&gt;</span>
+                <span className="text-slate-500 select-none">&gt;</span>
                 <span>{msg}</span>
               </div>
             ))}

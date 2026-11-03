@@ -35,6 +35,7 @@ export interface VelocityData {
 export interface AnalyzeResponse {
   topic: string;
   aspect: string;
+  genre: string;
   coverage: {
     oldest: string;
     newest: string;
@@ -87,10 +88,19 @@ export interface AdminStats {
   storageLimitBytes: number;
 }
 
+export interface TopicSummaryItem {
+  topic_key: string;
+  genre: string;
+  n: number;
+  oldest?: string | null;
+  newest?: string | null;
+}
+
 export interface AdminTweet {
   id: string;
   topic_key: string;
   aspect: string | null;
+  genre?: string;
   handle: string;
   tweeted_at: string;
   text: string;

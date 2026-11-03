@@ -42,3 +42,13 @@ export function sanitizeHandle(handle: string | undefined | null): string {
   }
   return "unknown";
 }
+
+/**
+ * Sanitizes input before interpolating into PostgREST filter expressions (.or, .ilike).
+ * Strips PostgREST special control characters: () , . : " ' \ % and limits length.
+ */
+export function sanitizePostgrestFilter(input: string | undefined | null): string {
+  if (!input || typeof input !== "string") return "";
+  return input.replace(/[(),.:"\'\\%*]/g, " ").replace(/\s+/g, " ").trim().slice(0, 100);
+}
+

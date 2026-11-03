@@ -100,10 +100,10 @@ export default function AdminPage() {
     loadTweets(1);
   }, [loadStats, loadTweets]);
 
-  // Handle Login Submit
+  // Handle Login
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!passkeyInput.trim() || isLoggingIn) return;
+    if (!passkeyInput.trim()) return;
 
     setIsLoggingIn(true);
     setLoginError("");
@@ -121,15 +121,14 @@ export default function AdminPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Authentication failed");
+        throw new Error(data.error || "Authentication failed. Incorrect passkey.");
       }
 
       setIsAuthenticated(true);
-      setPasskeyInput("");
       loadStats();
       loadTweets(1);
     } catch (err: unknown) {
-      setLoginError(err instanceof Error ? err.message : "Invalid passkey");
+      setLoginError(err instanceof Error ? err.message : "Authentication error");
     } finally {
       setIsLoggingIn(false);
     }
@@ -142,11 +141,14 @@ export default function AdminPage() {
     setTimeout(() => setToastMessage(""), 5000);
   };
 
-  // 1. Initial Checking Loading State
+  // 1. Loading Verification State
   if (isAuthenticated === null) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4">
-        <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="flex items-center gap-2 rounded-full glass-pill px-4 py-2 text-xs font-semibold text-slate-700">
+          <Loader2 className="h-4 w-4 animate-spin text-[#6c94cc]" />
+          <span>Verifying admin session...</span>
+        </div>
       </div>
     );
   }
@@ -155,41 +157,41 @@ export default function AdminPage() {
   if (!isAuthenticated) {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="w-full max-w-sm rounded-3xl border border-neutral-800 bg-neutral-900/90 p-8 shadow-2xl backdrop-blur-xl">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-400">
+        <div className="w-full max-w-sm rounded-3xl glass-elevated p-8 shadow-2xl">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full glass-pill text-[#6c94cc]">
             <Lock className="h-6 w-6" />
           </div>
 
-          <h1 className="mt-4 text-xl font-black text-neutral-100">
+          <h1 className="mt-4 text-xl font-black text-slate-900">
             Admin Passkey Gate
           </h1>
-          <p className="mt-1 text-xs text-neutral-400">
+          <p className="mt-1 text-xs text-slate-500">
             Enter your configured master passkey to unlock the ABSA Studio management console.
           </p>
 
           {loginError && (
-            <div className="mt-4 flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
-              <ShieldAlert className="h-4 w-4 shrink-0 text-rose-400" />
+            <div className="mt-4 flex items-center gap-2 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-700">
+              <ShieldAlert className="h-4 w-4 shrink-0 text-rose-600" />
               <span>{loginError}</span>
             </div>
           )}
 
           <form onSubmit={handleLoginSubmit} className="mt-6 space-y-3.5">
             <div>
-              <label className="text-[11px] font-semibold text-neutral-400">Admin Email</label>
+              <label className="text-[11px] font-semibold text-slate-600">Admin Email</label>
               <input
                 type="email"
                 value={emailInput}
                 onChange={(e) => setEmailInput(e.target.value)}
                 placeholder="arnavraut4567@gmail.com"
-                className="mt-1 w-full rounded-xl border border-neutral-700 bg-neutral-800/80 py-2 px-3 text-xs text-neutral-100 placeholder:text-neutral-500 focus:border-indigo-500 focus:outline-none"
+                className="mt-1 w-full rounded-full glass-input py-2 px-4 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="text-[11px] font-semibold text-neutral-400">Master Passkey</label>
+              <label className="text-[11px] font-semibold text-slate-600">Master Passkey</label>
               <div className="relative mt-1">
-                <KeyRound className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-500" />
+                <KeyRound className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                 <input
                   type="password"
                   required
@@ -197,7 +199,7 @@ export default function AdminPage() {
                   value={passkeyInput}
                   onChange={(e) => setPasskeyInput(e.target.value)}
                   placeholder="absa_admin_..."
-                  className="w-full rounded-xl border border-neutral-700 bg-neutral-800/80 py-2 pl-9 pr-3 text-xs text-neutral-100 placeholder:text-neutral-500 focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-full glass-input py-2 pl-9 pr-3 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none"
                 />
               </div>
             </div>
@@ -205,11 +207,11 @@ export default function AdminPage() {
             <button
               type="submit"
               disabled={isLoggingIn || !passkeyInput.trim()}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-indigo-600 py-2.5 text-xs font-semibold text-white shadow-md hover:bg-indigo-500 disabled:opacity-50 transition-all"
+              className="w-full flex items-center justify-center gap-2 rounded-full glass-pill-active py-2.5 text-xs font-semibold shadow-xs disabled:opacity-50 transition-all cursor-pointer"
             >
               {isLoggingIn ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin text-white" />
                   <span>Verifying...</span>
                 </>
               ) : (
@@ -221,7 +223,7 @@ export default function AdminPage() {
           <div className="mt-6 text-center">
             <Link
               href="/"
-              className="inline-flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-200"
+              className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               <span>Back to Public Search</span>
@@ -234,25 +236,25 @@ export default function AdminPage() {
 
   // 3. Authenticated Admin Dashboard
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 p-4 sm:p-8">
+    <div className="min-h-screen text-slate-900 p-4 sm:p-8">
       <div className="mx-auto max-w-7xl space-y-8">
         {/* Admin Header */}
-        <header className="flex flex-col gap-4 border-b border-neutral-800 pb-6 sm:flex-row sm:items-center sm:justify-between">
+        <header className="flex flex-col gap-4 border-b border-white/60 pb-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-2">
               <Link
                 href="/"
-                className="inline-flex items-center gap-1 rounded-lg border border-neutral-800 bg-neutral-900 px-2.5 py-1 text-xs text-neutral-400 hover:text-neutral-200"
+                className="inline-flex items-center gap-1 rounded-full glass-pill px-3 py-1 text-xs text-slate-600 hover:text-slate-900 cursor-pointer"
               >
                 <ArrowLeft className="h-3 w-3" />
                 <span>Search UI</span>
               </Link>
-              <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+              <span className="rounded-full glass-pill px-2.5 py-0.5 text-[10px] font-bold text-emerald-800">
                 Session Active
               </span>
             </div>
-            <h1 className="mt-2 text-2xl font-black sm:text-3xl">Admin Management Console</h1>
-            <p className="text-xs text-neutral-400">
+            <h1 className="mt-2 text-2xl font-black sm:text-3xl text-slate-900">Admin Management Console</h1>
+            <p className="text-xs text-slate-500">
               Database metrics, manual scrapers, dataset pruning, and full tweet inspection.
             </p>
           </div>
@@ -264,16 +266,16 @@ export default function AdminPage() {
                 loadStats();
                 loadTweets(currentPage);
               }}
-              className="flex items-center gap-1.5 rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-xs font-medium text-neutral-300 hover:bg-neutral-850"
+              className="flex items-center gap-1.5 rounded-full glass-pill px-3.5 py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 cursor-pointer"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${isLoadingStats || isLoadingTweets ? "animate-spin" : ""}`} />
+              <RefreshCw className={`h-3.5 w-3.5 text-[#6c94cc] ${isLoadingStats || isLoadingTweets ? "animate-spin" : ""}`} />
               <span>Refresh</span>
             </button>
 
             <button
               type="button"
               onClick={() => setIsPurgeOpen(true)}
-              className="flex items-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-500/20"
+              className="flex items-center gap-1.5 rounded-full glass-pill px-3.5 py-2 text-xs font-semibold text-rose-700 hover:text-rose-900 cursor-pointer"
             >
               <Trash2 className="h-3.5 w-3.5" />
               <span>Purge Data</span>
@@ -285,7 +287,7 @@ export default function AdminPage() {
                 document.cookie = "absa_admin_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
                 setIsAuthenticated(false);
               }}
-              className="flex items-center gap-1.5 rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-xs font-medium text-neutral-400 hover:text-neutral-200"
+              className="flex items-center gap-1.5 rounded-full glass-pill px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 cursor-pointer"
             >
               <LogOut className="h-3.5 w-3.5" />
               <span>Lock</span>
@@ -295,14 +297,14 @@ export default function AdminPage() {
 
         {/* Toast Alert */}
         {toastMessage && (
-          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3 text-xs font-medium text-emerald-300">
+          <div className="rounded-2xl glass-panel border-emerald-400/40 p-3 text-xs font-medium text-emerald-900">
             {toastMessage}
           </div>
         )}
 
         {/* 1. Stats Grid */}
         <section className="space-y-3">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-neutral-400">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
             Platform & Database Metrics
           </h2>
           <StatsGrid stats={stats} isLoading={isLoadingStats} />
@@ -310,7 +312,7 @@ export default function AdminPage() {
 
         {/* 2. Manual Scrape Pipeline */}
         <section className="space-y-3">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-neutral-400">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
             Data Scraper Pipeline
           </h2>
           <ScrapeForm
@@ -323,7 +325,7 @@ export default function AdminPage() {
 
         {/* 3. Tweets Table */}
         <section className="space-y-3">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-neutral-400">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
             Tweet Records & Classifications
           </h2>
           <TweetTable

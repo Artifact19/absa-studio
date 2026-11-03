@@ -21,7 +21,11 @@ export function TimeWindowChips({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2" role="tablist" aria-label="Time window selector">
+    <div
+      className="inline-flex flex-wrap items-center gap-1 p-1 rounded-full glass-track max-w-full shadow-xs"
+      role="tablist"
+      aria-label="Time window selector"
+    >
       {availableWindows.map((win) => {
         const isSelected = win.id === selectedWindowId;
 
@@ -33,18 +37,18 @@ export function TimeWindowChips({
             aria-selected={isSelected}
             disabled={isLoading}
             onClick={() => onSelectWindow(win.id)}
-            className={`group inline-flex items-center gap-1.5 rounded-full px-3 sm:px-3.5 py-1.5 text-xs font-medium transition-all duration-150 ${
+            className={`group inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all duration-200 ${
               isSelected
-                ? "bg-stone-900 text-white shadow-xs ring-1 ring-stone-900"
-                : "border border-stone-200 bg-white/90 text-stone-700 hover:border-amber-300 hover:bg-stone-50"
-            } ${isLoading ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
+                ? "glass-pill-active shadow-sm"
+                : "text-slate-600 hover:text-slate-900 hover:bg-white/50 cursor-pointer"
+            } ${isLoading ? "opacity-60 cursor-not-allowed" : ""}`}
           >
             <span className="truncate max-w-[280px] sm:max-w-none">{win.label}</span>
             <span
-              className={`rounded-full px-1.5 py-0.2 text-[10px] tabular-nums font-semibold ${
+              className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums font-bold ${
                 isSelected
-                  ? "bg-white/25 text-white"
-                  : "bg-stone-100 text-stone-600 group-hover:bg-amber-100/70 group-hover:text-amber-900"
+                  ? "bg-white/30 text-white"
+                  : "bg-white/60 text-slate-500 group-hover:bg-white/80"
               }`}
             >
               {win.n.toLocaleString()}

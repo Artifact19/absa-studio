@@ -22,11 +22,34 @@ export function verifyAdminPasskey(inputKey: string): boolean {
   return crypto.timingSafeEqual(bufA, bufB);
 }
 
+let ephemeralDevSecret: string | null = null;
+
+function getCookieSecret(): string {
+  const secret = process.env.ADMIN_COOKIE_SECRET;
+  if (secret && secret.trim().length >= 16) {
+    return secret.trim();
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    console.error("FATAL: ADMIN_COOKIE_SECRET environment variable is missing or too short.");
+    return "";
+  }
+
+  // Development ephemeral fallback: generate random in-memory key per process boot
+  if (!ephemeralDevSecret) {
+    ephemeralDevSecret = crypto.randomBytes(32).toString("hex");
+  }
+  return ephemeralDevSecret;
+}
+
 /**
  * Creates an HMAC signed session token: "<timestamp>.<hmac>"
  */
 export function createAdminSessionToken(): string {
-  const secret = process.env.ADMIN_COOKIE_SECRET || "fallback_default_secret_32_bytes_min_length!";
+  const secret = getCookieSecret();
+  if (!secret) {
+    throw new Error("ADMIN_COOKIE_SECRET is not configured.");
+  }
   const timestamp = Date.now().toString();
   const signature = crypto.createHmac("sha256", secret).update(timestamp).digest("hex");
   return `${timestamp}.${signature}`;
@@ -49,7 +72,9 @@ export function verifyAdminSessionToken(token: string | undefined | null): boole
     return false;
   }
 
-  const secret = process.env.ADMIN_COOKIE_SECRET || "fallback_default_secret_32_bytes_min_length!";
+  const secret = getCookieSecret();
+  if (!secret) return false;
+
   const expectedSignature = crypto.createHmac("sha256", secret).update(timestampStr).digest("hex");
 
   const bufA = Buffer.from(signature);

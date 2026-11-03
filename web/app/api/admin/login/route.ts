@@ -7,8 +7,6 @@ import {
   SESSION_MAX_AGE_MS,
 } from "@/lib/auth";
 
-const ADMIN_EMAIL = "arnavraut4567@gmail.com";
-
 export async function POST(req: NextRequest) {
   try {
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
@@ -24,11 +22,19 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const email = (body.email || "").trim().toLowerCase();
     const passkey = body.passkey ? String(body.passkey).trim() : "";
+    const configuredAdminEmail = (process.env.ADMIN_EMAIL || "").trim().toLowerCase();
 
     const isMasterPasskey = verifyAdminPasskey(passkey);
 
     // If matching admin email AND master passkey -> grant admin
-    if (email === ADMIN_EMAIL && isMasterPasskey) {
+    if (configuredAdminEmail && email === configuredAdminEmail) {
+      if (!isMasterPasskey) {
+        return NextResponse.json(
+          { error: "Invalid admin passkey", remainingAttempts: rateLimit.remaining },
+          { status: 401, headers: { "X-Robots-Tag": "noindex" } }
+        );
+      }
+
       const token = createAdminSessionToken();
       const isProd = process.env.NODE_ENV === "production";
 
@@ -36,7 +42,7 @@ export async function POST(req: NextRequest) {
         {
           ok: true,
           role: "admin",
-          email: ADMIN_EMAIL,
+          email: configuredAdminEmail,
           redirect: "/admin",
           message: "Welcome back, Admin!",
         },
@@ -56,8 +62,8 @@ export async function POST(req: NextRequest) {
       return response;
     }
 
-    // Direct passkey match (CLI or direct admin login)
-    if (!email && isMasterPasskey) {
+    // Direct passkey match (CLI, passkey modal, or direct admin login)
+    if (isMasterPasskey) {
       const token = createAdminSessionToken();
       const isProd = process.env.NODE_ENV === "production";
 

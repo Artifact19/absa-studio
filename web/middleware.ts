@@ -33,6 +33,15 @@ async function verifyEdgeToken(token: string, secret: string): Promise<boolean> 
   return signature === expectedSig;
 }
 
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
@@ -44,18 +53,18 @@ export async function middleware(req: NextRequest) {
   }
 
   const adminPasskey = process.env.ADMIN_PASSKEY || "";
-  const cookieSecret = process.env.ADMIN_COOKIE_SECRET || "fallback_default_secret_32_bytes_min_length!";
+  const cookieSecret = process.env.ADMIN_COOKIE_SECRET || "";
 
   // Check header
   const headerKey = req.headers.get("x-admin-key");
   let isAuthed = false;
 
-  if (headerKey && adminPasskey && headerKey === adminPasskey) {
+  if (headerKey && adminPasskey && constantTimeEqual(headerKey, adminPasskey)) {
     isAuthed = true;
   }
 
   // Check cookie
-  if (!isAuthed) {
+  if (!isAuthed && cookieSecret) {
     const cookie = req.cookies.get(COOKIE_NAME);
     if (cookie?.value) {
       isAuthed = await verifyEdgeToken(cookie.value, cookieSecret);

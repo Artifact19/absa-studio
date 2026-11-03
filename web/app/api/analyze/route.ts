@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sb } from "@/lib/supabase-server";
-import { normalizeTopicKey, cleanTweetText, sanitizeHandle } from "@/lib/clean";
+import { normalizeTopicKey, cleanTweetText, sanitizeHandle, sanitizePostgrestFilter } from "@/lib/clean";
+import { classifyTopicGenre } from "@/lib/genre";
 import { computeDedupKey } from "@/lib/dedup";
 import { hf } from "@/lib/hf";
 import { fetchTweetsFromFetchLayer } from "@/lib/fetchlayer";
@@ -19,9 +20,24 @@ import {
   Evidence,
   SentimentLabel,
 } from "@/lib/types";
+import { checkPublicEndpointRateLimit } from "@/lib/ratelimit";
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
+    const rl = checkPublicEndpointRateLimit(ip);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Please wait a few moments before searching again." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(rl.retryAfterSeconds),
+          },
+        }
+      );
+    }
+
     const body = await req.json().catch(() => ({}));
     const rawTopic = (body.topic || "").trim();
     const requestedWindow = (body.window as TimeWindowId) || undefined;
@@ -175,12 +191,23 @@ export async function POST(req: NextRequest) {
       }
 
       // 2. If no rows found yet, try ILIKE search on topic_key or aspect in view
+      const safeTopicFilter = sanitizePostgrestFilter(topicKey);
+      const safeAspectFilter = sanitizePostgrestFilter(rawTopic);
+
       if (!rows || rows.length === 0) {
-        const { data: vIlike, error: vIlikeErr } = await supabase
+        let vQuery = supabase
           .from("absa_tweets_v")
-          .select("aspect, tweeted_at, text, cleaned_text, sentiment, p_pos, p_neg, p_neu, handle")
-          .or(`topic_key.ilike.%${topicKey}%,aspect.ilike.%${rawTopic}%`)
-          .order("tweeted_at", { ascending: false });
+          .select("aspect, tweeted_at, text, cleaned_text, sentiment, p_pos, p_neg, p_neu, handle");
+
+        if (safeTopicFilter && safeAspectFilter) {
+          vQuery = vQuery.or(`topic_key.ilike.%${safeTopicFilter}%,aspect.ilike.%${safeAspectFilter}%`);
+        } else if (safeTopicFilter) {
+          vQuery = vQuery.ilike("topic_key", `%${safeTopicFilter}%`);
+        } else if (safeAspectFilter) {
+          vQuery = vQuery.ilike("aspect", `%${safeAspectFilter}%`);
+        }
+
+        const { data: vIlike, error: vIlikeErr } = await vQuery.order("tweeted_at", { ascending: false });
 
         if (vIlikeErr) {
           if (vIlikeErr.message?.toLowerCase().includes("permission denied")) {
@@ -226,11 +253,19 @@ export async function POST(req: NextRequest) {
 
       // 4. Try raw table ILIKE fallback if still no rows
       if (!rows || rows.length === 0) {
-        const { data: tIlike, error: tIlikeErr } = await supabase
+        let tQuery = supabase
           .from("absa_tweets")
-          .select('aspect, time, text, cleaned_text, "qwen2.5-3b-instruct_sentiment", qwen_prob_pos, qwen_prob_neg, qwen_prob_neu, "user"')
-          .or(`topic_key.ilike.%${topicKey}%,aspect.ilike.%${rawTopic}%`)
-          .order("time", { ascending: false });
+          .select('aspect, time, text, cleaned_text, "qwen2.5-3b-instruct_sentiment", qwen_prob_pos, qwen_prob_neg, qwen_prob_neu, "user"');
+
+        if (safeTopicFilter && safeAspectFilter) {
+          tQuery = tQuery.or(`topic_key.ilike.%${safeTopicFilter}%,aspect.ilike.%${safeAspectFilter}%`);
+        } else if (safeTopicFilter) {
+          tQuery = tQuery.ilike("topic_key", `%${safeTopicFilter}%`);
+        } else if (safeAspectFilter) {
+          tQuery = tQuery.ilike("aspect", `%${safeAspectFilter}%`);
+        }
+
+        const { data: tIlike, error: tIlikeErr } = await tQuery.order("time", { ascending: false });
 
         if (tIlikeErr) {
           if (tIlikeErr.message?.toLowerCase().includes("permission denied")) {
@@ -363,9 +398,35 @@ export async function POST(req: NextRequest) {
     const maxTime = Math.max(...times);
     const days = Math.round((maxTime - minTime) / 86_400_000);
 
+    // Resolve topic genre with metadata persistence
+    let genre = classifyTopicGenre(topicKey, aspectDisplay);
+    try {
+      const { data: meta } = await supabase
+        .from("topic_metadata")
+        .select("genre")
+        .eq("topic_key", topicKey)
+        .maybeSingle();
+
+      if (meta && meta.genre) {
+        genre = meta.genre;
+      } else {
+        // Asynchronously persist detected genre into topic_metadata if table exists
+        supabase
+          .from("topic_metadata")
+          .upsert({ topic_key: topicKey, genre }, { onConflict: "topic_key" })
+          .then(
+            () => {},
+            () => {}
+          );
+      }
+    } catch {
+      // Gracefully fall back to classified genre if metadata table is not yet created
+    }
+
     const response: AnalyzeResponse = {
       topic: rawTopic,
       aspect: aspectDisplay,
+      genre,
       coverage: {
         oldest: new Date(minTime).toISOString(),
         newest: new Date(maxTime).toISOString(),

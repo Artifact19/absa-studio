@@ -16,7 +16,7 @@ export function VelocityBadge({ velocity }: VelocityBadgeProps) {
 
   if (velocity.state === "bullish") {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-50/80 px-2.5 sm:px-3 py-1 text-xs font-semibold text-emerald-800">
+      <span className="inline-flex items-center gap-1.5 rounded-full glass-pill px-3.5 py-1.5 text-xs font-semibold text-emerald-800 shadow-2xs">
         <span>🚀</span>
         <span>Bullish Momentum ({sign} vs. baseline)</span>
       </span>
@@ -25,7 +25,7 @@ export function VelocityBadge({ velocity }: VelocityBadgeProps) {
 
   if (velocity.state === "declining") {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/25 bg-rose-50/80 px-2.5 sm:px-3 py-1 text-xs font-semibold text-rose-800">
+      <span className="inline-flex items-center gap-1.5 rounded-full glass-pill px-3.5 py-1.5 text-xs font-semibold text-rose-800 shadow-2xs">
         <span>🔻</span>
         <span>Declining Sentiment ({sign} vs. baseline)</span>
       </span>
@@ -33,9 +33,9 @@ export function VelocityBadge({ velocity }: VelocityBadgeProps) {
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-stone-300 bg-stone-100/80 px-2.5 sm:px-3 py-1 text-xs font-semibold text-stone-700">
+    <span className="inline-flex items-center gap-1.5 rounded-full glass-pill px-3.5 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs">
       <span>⚖️</span>
-      <span>Stable Consensus (±3% consistent over time)</span>
+      <span>Stable Consensus (±3% consistent)</span>
     </span>
   );
 }

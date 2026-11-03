@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sb } from "@/lib/supabase-server";
 import { isRequestAuthorized } from "@/lib/auth";
+import { sanitizePostgrestFilter } from "@/lib/clean";
 import { AdminTweet, SentimentLabel } from "@/lib/types";
+import { classifyTopicGenre } from "@/lib/genre";
 
 export async function GET(req: NextRequest) {
   if (!isRequestAuthorized(req)) {
@@ -10,9 +12,9 @@ export async function GET(req: NextRequest) {
 
   try {
     const { searchParams } = new URL(req.url);
-    const topic = searchParams.get("topic")?.trim() || "";
+    const rawTopic = searchParams.get("topic")?.trim() || "";
     const sentiment = searchParams.get("sentiment")?.trim() || "";
-    const query = searchParams.get("q")?.trim() || "";
+    const rawQuery = searchParams.get("q")?.trim() || "";
     const sort = searchParams.get("sort")?.trim() || "time.desc";
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
     const pageSize = Math.min(100, Math.max(10, parseInt(searchParams.get("pageSize") || "50", 10)));
@@ -21,8 +23,11 @@ export async function GET(req: NextRequest) {
     let dbQuery = supabase.from("absa_tweets_v").select("*", { count: "exact" });
 
     // Filter by topic
-    if (topic) {
-      dbQuery = dbQuery.eq("topic_key", topic.toLowerCase());
+    if (rawTopic) {
+      const safeTopic = sanitizePostgrestFilter(rawTopic).toLowerCase();
+      if (safeTopic) {
+        dbQuery = dbQuery.eq("topic_key", safeTopic);
+      }
     }
 
     // Filter by sentiment
@@ -31,8 +36,11 @@ export async function GET(req: NextRequest) {
     }
 
     // Filter by text search (ilike)
-    if (query) {
-      dbQuery = dbQuery.or(`text.ilike.%${query}%,cleaned_text.ilike.%${query}%,handle.ilike.%${query}%`);
+    if (rawQuery) {
+      const safeQuery = sanitizePostgrestFilter(rawQuery);
+      if (safeQuery) {
+        dbQuery = dbQuery.or(`text.ilike.%${safeQuery}%,cleaned_text.ilike.%${safeQuery}%,handle.ilike.%${safeQuery}%`);
+      }
     }
 
     // Sort order
@@ -79,6 +87,7 @@ export async function GET(req: NextRequest) {
       return {
         id: r.id,
         topic_key: r.topic_key,
+        genre: classifyTopicGenre(r.topic_key, r.aspect),
         aspect: r.aspect,
         handle: r.handle || "unknown",
         tweeted_at: r.tweeted_at,

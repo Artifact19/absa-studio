@@ -10,6 +10,7 @@ import { VelocityBadge } from "@/components/VelocityBadge";
 import { SentimentSummary } from "@/components/SentimentSummary";
 import { InsightsCards } from "@/components/InsightsCards";
 import { EvidenceList } from "@/components/EvidenceList";
+import { GenreBadge } from "@/components/GenreBadge";
 import { AnalyzeResponse, TimeWindowId } from "@/lib/types";
 import { UserRound, Sparkles, AlertCircle, RefreshCw, X, Loader2, Check } from "lucide-react";
 
@@ -22,7 +23,7 @@ export default function HomePage() {
   const [notFoundMessage, setNotFoundMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [warmupMessage, setWarmupMessage] = useState("");
-  const [suggestedTopics, setSuggestedTopics] = useState<Array<{ topic_key: string; n: number }>>([]);
+  const [suggestedTopics, setSuggestedTopics] = useState<Array<{ topic_key: string; genre?: string; n: number }>>([]);
 
   // Sign In / Account modal state
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -166,13 +167,11 @@ export default function HomePage() {
         throw new Error(data.error || "Invalid email or passkey.");
       }
 
-      // If matching admin credentials -> redirect directly to admin console
       if (data.redirect) {
         window.location.href = data.redirect;
         return;
       }
 
-      // Standard user sign-in
       setSignedInEmail(data.email || authEmail.trim());
       setIsAuthModalOpen(false);
       setAuthPasskey("");
@@ -186,31 +185,31 @@ export default function HomePage() {
   const isResultsView = Boolean(analyzedData || notFoundMessage || errorMessage);
 
   return (
-    <div className="min-h-screen bg-[#faf8f5] text-stone-900 selection:bg-amber-100 selection:text-stone-900">
-      {/* Top Navigation Bar */}
+    <div className="min-h-screen text-slate-900 selection:bg-sky-200 selection:text-slate-900">
+      {/* Top Floating Glass Navigation Bar */}
       <header
-        className={`w-full border-b border-stone-200/80 bg-[#faf8f5]/85 backdrop-blur-md transition-all ${
+        className={`w-full border-b border-white/60 bg-white/60 backdrop-blur-xl transition-all ${
           isResultsView ? "sticky top-0 z-40 shadow-xs" : ""
         }`}
       >
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
-          <Link href="/" className="flex items-center gap-2 sm:gap-2.5 font-bold tracking-tight text-stone-900">
-            <div className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-xl border border-amber-200/70 bg-amber-50/60 shadow-2xs">
+          <Link href="/" className="flex items-center gap-2.5 font-extrabold tracking-tight text-slate-900">
+            <div className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full glass-pill p-1 shadow-2xs">
               <Image
                 src="/cat-icon.png"
                 alt="ABSA Studio Cat Icon"
-                width={32}
-                height={32}
+                width={28}
+                height={28}
                 className="h-full w-full object-contain"
                 priority
               />
             </div>
-            <span className="text-base sm:text-lg">ABSA Studio</span>
+            <span className="text-base sm:text-lg font-bold">ABSA Studio</span>
           </Link>
 
           <div className="flex items-center gap-2 sm:gap-3">
             {signedInEmail ? (
-              <span className="inline-flex items-center gap-1.5 rounded-xl border border-stone-200 bg-white/90 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-2xs max-w-[140px] xs:max-w-[200px] sm:max-w-none">
+              <span className="inline-flex items-center gap-1.5 rounded-full glass-pill px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-2xs max-w-[140px] xs:max-w-[200px] sm:max-w-none">
                 <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                 <span className="truncate">{signedInEmail}</span>
               </span>
@@ -221,9 +220,9 @@ export default function HomePage() {
                   setAuthError("");
                   setIsAuthModalOpen(true);
                 }}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-stone-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-50 hover:text-stone-900 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-full glass-pill px-3.5 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:text-slate-900 transition-all cursor-pointer"
               >
-                <UserRound className="h-3.5 w-3.5 text-amber-600" />
+                <UserRound className="h-3.5 w-3.5 text-[#6c94cc]" />
                 <span>Sign In</span>
               </button>
             )}
@@ -244,22 +243,22 @@ export default function HomePage() {
 
         {/* Cold Start / Warmup Notice */}
         {warmupMessage && (
-          <div className="mx-auto mt-4 max-w-2xl flex items-center gap-2 rounded-xl border border-amber-300/60 bg-amber-50 p-3 text-xs text-amber-900">
-            <RefreshCw className="h-4 w-4 animate-spin text-amber-600 shrink-0" />
+          <div className="mx-auto mt-4 max-w-2xl flex items-center gap-2 rounded-2xl glass-panel p-3 text-xs text-sky-900 border-sky-300/40">
+            <RefreshCw className="h-4 w-4 animate-spin text-[#6c94cc] shrink-0" />
             <span>{warmupMessage}</span>
           </div>
         )}
 
         {/* Friendly Empty State */}
         {notFoundMessage && !analyzedData && (
-          <div className="mx-auto mt-8 sm:mt-10 max-w-xl rounded-2xl border border-stone-200 bg-white p-6 sm:p-8 text-center shadow-xs">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+          <div className="mx-auto mt-8 sm:mt-10 max-w-xl rounded-3xl glass-panel p-6 sm:p-8 text-center shadow-xs">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-sky-500/10 text-[#6c94cc]">
               <Sparkles className="h-6 w-6" />
             </div>
-            <h2 className="mt-4 text-base font-bold text-stone-900">
+            <h2 className="mt-4 text-base font-bold text-slate-900">
               No posts found yet
             </h2>
-            <p className="mt-2 text-xs sm:text-sm text-stone-600 leading-relaxed">
+            <p className="mt-2 text-xs sm:text-sm text-slate-600 leading-relaxed">
               {notFoundMessage}
             </p>
           </div>
@@ -267,8 +266,8 @@ export default function HomePage() {
 
         {/* Error State */}
         {errorMessage && !analyzedData && (
-          <div className="mx-auto mt-8 sm:mt-10 max-w-xl rounded-2xl border border-rose-200 bg-rose-50/60 p-5 sm:p-6 text-center shadow-xs">
-            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 text-rose-600">
+          <div className="mx-auto mt-8 sm:mt-10 max-w-xl rounded-3xl glass-panel border-rose-300/40 p-5 sm:p-6 text-center shadow-xs">
+            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-rose-500/10 text-rose-600">
               <AlertCircle className="h-5 w-5" />
             </div>
             <h2 className="mt-3 text-sm font-bold text-rose-900">
@@ -283,13 +282,16 @@ export default function HomePage() {
         {/* Analyzed Dashboard Results */}
         {analyzedData && (
           <div className="mt-6 sm:mt-8 space-y-6 sm:space-y-8 animate-in fade-in duration-300">
-            {/* Header: Aspect title, Provenance Badge, Velocity */}
-            <div className="flex flex-col gap-3 sm:gap-4 border-b border-stone-200/80 pb-5 sm:pb-6 sm:flex-row sm:items-center sm:justify-between">
+            {/* Header: Aspect title, Genre Pill Badge, Provenance Badge, Velocity */}
+            <div className="flex flex-col gap-4 border-b border-white/60 pb-5 sm:pb-6 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-wider text-amber-700">
-                  Topic
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#6c94cc]">
+                    Target Entity
+                  </span>
+                  <GenreBadge genre={analyzedData.genre} size="sm" />
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-extrabold text-stone-900 break-words">
+                <h2 className="text-2xl sm:text-4xl font-black text-slate-900 break-words tracking-tight">
                   {analyzedData.aspect}
                 </h2>
               </div>
@@ -300,9 +302,9 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Time Window Chips */}
+            {/* Time Window Chips (Segmented Frosted Capsule) */}
             <div className="space-y-2">
-              <div className="text-xs font-medium text-stone-500">Time period:</div>
+              <div className="text-xs font-semibold text-slate-500">Observation Window:</div>
               <TimeWindowChips
                 availableWindows={analyzedData.availableWindows}
                 selectedWindowId={selectedWindowId}
@@ -317,12 +319,12 @@ export default function HomePage() {
             {/* Executive Brief */}
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-amber-600" />
-                <h3 className="text-base font-bold text-stone-900">
-                  Quick Summary
+                <Sparkles className="h-4 w-4 text-[#6c94cc]" />
+                <h3 className="text-base font-bold text-slate-900">
+                  Executive Brief
                 </h3>
                 {isStreamingInsights && (
-                  <span className="text-xs text-amber-700 animate-pulse font-medium">
+                  <span className="text-xs text-[#6c94cc] animate-pulse font-medium">
                     (Writing summary...)
                   </span>
                 )}
@@ -335,8 +337,8 @@ export default function HomePage() {
 
             {/* Evidence Cards */}
             <div className="space-y-3">
-              <h3 className="text-base font-bold text-stone-900">
-                Real Tweets & Posts
+              <h3 className="text-base font-bold text-slate-900">
+                Ground-Truth Evidence on X
               </h3>
               <EvidenceList
                 positiveEvidence={analyzedData.evidence.positive}
@@ -349,36 +351,36 @@ export default function HomePage() {
 
       {/* Sign In / Sign Up Modal */}
       {isAuthModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="relative w-full max-w-sm rounded-3xl border border-stone-200 bg-white p-6 sm:p-7 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 backdrop-blur-md p-4">
+          <div className="relative w-full max-w-sm rounded-3xl glass-elevated p-6 sm:p-7 shadow-2xl">
             <button
               type="button"
               onClick={() => setIsAuthModalOpen(false)}
-              className="absolute right-4 top-4 text-stone-400 hover:text-stone-600"
+              className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 cursor-pointer"
             >
               <X className="h-4 w-4" />
             </button>
 
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full glass-pill text-[#6c94cc]">
               <UserRound className="h-5 w-5" />
             </div>
 
-            <h3 className="mt-3 text-lg font-bold text-stone-900">
+            <h3 className="mt-3 text-lg font-bold text-slate-900">
               Sign In
             </h3>
-            <p className="mt-1 text-xs text-stone-500">
+            <p className="mt-1 text-xs text-slate-500">
               Enter your email and passkey to access your profile.
             </p>
 
             {authError && (
-              <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-2.5 text-xs text-rose-700">
+              <div className="mt-3 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-2.5 text-xs text-rose-700">
                 {authError}
               </div>
             )}
 
             <form onSubmit={handleSignInSubmit} className="mt-4 space-y-3.5">
               <div>
-                <label className="text-[11px] font-semibold text-stone-600">
+                <label className="text-[11px] font-semibold text-slate-600">
                   Email address
                 </label>
                 <input
@@ -388,12 +390,12 @@ export default function HomePage() {
                   value={authEmail}
                   onChange={(e) => setAuthEmail(e.target.value)}
                   placeholder="name@example.com"
-                  className="mt-1 w-full rounded-xl border border-stone-200 bg-stone-50/50 px-3 py-2 text-xs text-stone-900 focus:border-amber-600 focus:outline-none"
+                  className="mt-1 w-full rounded-full glass-input px-4 py-2 text-xs text-slate-900 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-stone-600">
+                <label className="text-[11px] font-semibold text-slate-600">
                   Passkey
                 </label>
                 <input
@@ -402,18 +404,18 @@ export default function HomePage() {
                   value={authPasskey}
                   onChange={(e) => setAuthPasskey(e.target.value)}
                   placeholder="••••••••••••"
-                  className="mt-1 w-full rounded-xl border border-stone-200 bg-stone-50/50 px-3 py-2 text-xs text-stone-900 focus:border-amber-600 focus:outline-none"
+                  className="mt-1 w-full rounded-full glass-input px-4 py-2 text-xs text-slate-900 focus:outline-none"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={isSigningIn}
-                className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-amber-600 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-amber-700 active:scale-95 disabled:opacity-50 transition-all mt-2"
+                className="w-full flex items-center justify-center gap-1.5 rounded-full glass-pill-active py-2.5 text-xs font-semibold shadow-xs active:scale-95 disabled:opacity-50 transition-all mt-2 cursor-pointer"
               >
                 {isSigningIn ? (
                   <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-white" />
                     <span>Signing in...</span>
                   </>
                 ) : (
@@ -426,7 +428,7 @@ export default function HomePage() {
       )}
 
       {/* Footer */}
-      <footer className="mt-16 sm:mt-20 border-t border-stone-200/80 py-8 text-center text-xs text-stone-500">
+      <footer className="mt-16 sm:mt-20 border-t border-white/60 py-8 text-center text-xs text-slate-500">
         <div className="mx-auto max-w-6xl px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p>© 2026 Target-Oriented ABSA Studio.</p>
           <div className="flex items-center gap-4">
@@ -434,7 +436,7 @@ export default function HomePage() {
               href="https://fetchlayer.dev"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-stone-800"
+              className="hover:text-slate-800 transition-colors"
             >
               FetchLayer ↗
             </a>

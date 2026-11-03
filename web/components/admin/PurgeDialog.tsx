@@ -77,65 +77,65 @@ export function PurgeDialog({ isOpen, onClose, onPurged, activeTopic = "" }: Pur
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-      <div className="relative w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 backdrop-blur-md p-4">
+      <div className="relative w-full max-w-md rounded-3xl glass-elevated p-6 sm:p-7 shadow-2xl">
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
+          className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 cursor-pointer"
         >
           <X className="h-4 w-4" />
         </button>
 
-        <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+        <div className="flex items-center gap-2 text-rose-600">
           <AlertTriangle className="h-5 w-5" />
-          <h3 className="text-base font-bold text-neutral-900 dark:text-neutral-100">
+          <h3 className="text-base font-bold text-slate-900">
             Purge Topic Records
           </h3>
         </div>
 
-        <p className="mt-2 text-xs text-neutral-500 leading-relaxed dark:text-neutral-400">
+        <p className="mt-2 text-xs text-slate-500 leading-relaxed">
           This operation is irreversible and will permanently delete tweets and their classification data from Supabase.
         </p>
 
         {errorMsg && (
-          <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-2.5 text-xs text-rose-600 dark:text-rose-300">
+          <div className="mt-3 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-2.5 text-xs text-rose-700">
             {errorMsg}
           </div>
         )}
 
         {/* Option 1: Purge specific topic */}
-        <div className="mt-4 space-y-3 rounded-xl border border-neutral-100 bg-neutral-50/50 p-3.5 dark:border-neutral-800 dark:bg-neutral-850/50">
-          <div className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
+        <div className="mt-4 space-y-3 rounded-2xl glass-panel p-4">
+          <div className="text-xs font-semibold text-slate-800">
             Option A: Delete by topic key
           </div>
           <div>
-            <label className="text-[11px] text-neutral-400">Target topic key</label>
+            <label className="text-[11px] text-slate-500">Target topic key</label>
             <input
               type="text"
               value={topicInput}
               onChange={(e) => setTopicInput(e.target.value)}
               placeholder="e.g. iphone 17"
-              className="mt-1 w-full rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+              className="mt-1 w-full rounded-full glass-input px-3.5 py-1.5 text-xs text-slate-900 focus:outline-none"
             />
           </div>
           <div>
-            <label className="text-[11px] text-neutral-400">
-              Type <strong className="text-rose-600 font-semibold">{topicInput || "topic"}</strong> to confirm:
+            <label className="text-[11px] text-slate-500">
+              Type <strong className="text-rose-600 font-bold">{topicInput || "topic"}</strong> to confirm:
             </label>
             <input
               type="text"
               value={confirmInput}
               onChange={(e) => setConfirmInput(e.target.value)}
               placeholder="Type topic name exactly..."
-              className="mt-1 w-full rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+              className="mt-1 w-full rounded-full glass-input px-3.5 py-1.5 text-xs text-slate-900 focus:outline-none"
             />
           </div>
           <button
             type="button"
             disabled={!isMatching || isLoading}
             onClick={handlePurgeTopic}
-            className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-rose-600 py-2 text-xs font-semibold text-white shadow-xs hover:bg-rose-700 disabled:opacity-40 disabled:pointer-events-none transition-all"
+            className="w-full flex items-center justify-center gap-1.5 rounded-full bg-rose-600 py-2 text-xs font-semibold text-white shadow-xs hover:bg-rose-700 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer"
           >
             {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
             <span>Purge Topic Dataset</span>
@@ -143,8 +143,8 @@ export function PurgeDialog({ isOpen, onClose, onPurged, activeTopic = "" }: Pur
         </div>
 
         {/* Option 2: Bulk retention purge */}
-        <div className="mt-4 space-y-2.5 rounded-xl border border-neutral-100 bg-neutral-50/50 p-3.5 dark:border-neutral-800 dark:bg-neutral-850/50">
-          <div className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
+        <div className="mt-4 space-y-2.5 rounded-2xl glass-panel p-4">
+          <div className="text-xs font-semibold text-slate-800">
             Option B: Retention Purge (Older than N days)
           </div>
           <div className="flex items-center gap-2">
@@ -154,14 +154,14 @@ export function PurgeDialog({ isOpen, onClose, onPurged, activeTopic = "" }: Pur
               value={olderThanDays}
               onChange={(e) => setOlderThanDays(e.target.value)}
               placeholder="e.g. 90"
-              className="w-24 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+              className="w-24 rounded-full glass-input px-3 py-1.5 text-xs text-slate-900 focus:outline-none"
             />
-            <span className="text-xs text-neutral-500">days old</span>
+            <span className="text-xs text-slate-500">days old</span>
             <button
               type="button"
               disabled={!olderThanDays || isLoading}
               onClick={handleBulkPurgeDays}
-              className="ml-auto rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+              className="ml-auto rounded-full glass-pill px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 cursor-pointer"
             >
               Purge Old Data
             </button>

@@ -1,16 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Image from "next/image";
-import { Search, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { Search, ChevronDown, ChevronUp, Loader2, Sparkles } from "lucide-react";
 import { ApiKeyField } from "./ApiKeyField";
+import { POPULAR_GENRES, normalizeGenre } from "@/lib/genre";
 
 interface SearchBarProps {
   initialTopic?: string;
   onSearch: (topic: string, apiKey?: string) => void;
   isLoading: boolean;
   compact: boolean;
-  suggestedTopics?: Array<{ topic_key: string; n: number }>;
+  suggestedTopics?: Array<{ topic_key: string; genre?: string; n: number }>;
 }
 
 export function SearchBar({
@@ -23,6 +24,7 @@ export function SearchBar({
   const [topic, setTopic] = useState(initialTopic);
   const [apiKey, setApiKey] = useState("");
   const [showApiKeyField, setShowApiKeyField] = useState(false);
+  const [activeGenreFilter, setActiveGenreFilter] = useState("all");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,15 +37,26 @@ export function SearchBar({
     onSearch(tKey, apiKey.trim() || undefined);
   };
 
+  // Filter suggested topics by selected genre
+  const filteredSuggestions = useMemo(() => {
+    if (activeGenreFilter === "all") return suggestedTopics;
+    return suggestedTopics.filter((s) => {
+      const g = normalizeGenre(s.genre || s.topic_key);
+      return g.toLowerCase().includes(activeGenreFilter.toLowerCase()) ||
+        activeGenreFilter.toLowerCase().includes(g.toLowerCase());
+    });
+  }, [suggestedTopics, activeGenreFilter]);
+
   return (
     <div
       className={`w-full transition-all duration-300 ${
-        compact ? "py-2" : "py-8 sm:py-12 flex flex-col items-center justify-center text-center"
+        compact ? "py-2" : "py-8 sm:py-14 flex flex-col items-center justify-center text-center"
       }`}
     >
       {!compact && (
-        <div className="mb-6 sm:mb-8 max-w-2xl space-y-3 px-2">
-          <div className="inline-flex items-center gap-2 rounded-full border border-amber-200/80 bg-amber-50/80 px-3.5 py-1 text-xs font-semibold text-amber-800 shadow-2xs">
+        <div className="mb-7 sm:mb-9 max-w-2xl space-y-3 px-2">
+          {/* Frosted VisionOS-style Hero Pill */}
+          <div className="inline-flex items-center gap-2 rounded-full glass-pill px-4 py-1.5 text-xs font-semibold text-slate-700 shadow-xs">
             <Image
               src="/cat-icon.png"
               alt="Cat Icon"
@@ -51,17 +64,19 @@ export function SearchBar({
               height={16}
               className="h-4 w-4 rounded-sm object-contain"
             />
-            <span>Real opinions. Zero noise.</span>
+            <span className="text-slate-800">Target-Oriented Sentiment Intelligence</span>
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-stone-900 sm:text-5xl">
-            See what people <span className="text-amber-600">really think</span>
+
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">
+            See what people <span className="text-[#6c94cc]">really think</span>
           </h1>
-          <p className="text-sm sm:text-base text-stone-600 max-w-lg mx-auto leading-relaxed">
-            Search any phone, game, brand, or celebrity. We scan recent posts, ignore the junk, and tell you if people actually like it or not.
+          <p className="text-sm sm:text-base text-slate-600 max-w-lg mx-auto leading-relaxed">
+            Search any phone, game, brand, or model. We isolate authentic sentiment toward your target, ignoring background noise.
           </p>
         </div>
       )}
 
+      {/* Main Glass Search Capsule Form */}
       <form
         onSubmit={handleSubmit}
         className={`w-full transition-all duration-300 ${
@@ -69,29 +84,29 @@ export function SearchBar({
         }`}
       >
         <div className="relative flex-1">
-          <div className="pointer-events-none absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 text-stone-400">
+          <div className="pointer-events-none absolute left-4 sm:left-5 top-1/2 -translate-y-1/2 text-slate-400">
             <Search className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
           <input
             type="text"
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
-            placeholder="Search anything (e.g. iPhone 17, GTA 6)..."
+            placeholder="Search any product, game, brand, or topic..."
             disabled={isLoading}
-            className={`w-full rounded-2xl border border-stone-300/90 bg-white/95 pl-10 sm:pl-11 pr-24 sm:pr-28 text-stone-900 shadow-xs placeholder:text-stone-400 focus:border-amber-600 focus:outline-none focus:ring-4 focus:ring-amber-500/15 ${
-              compact ? "py-2.5 text-xs sm:text-sm" : "py-3 sm:py-3.5 text-sm sm:text-base"
+            className={`w-full rounded-full glass-input pl-11 sm:pl-12 pr-28 sm:pr-32 text-slate-900 placeholder:text-slate-400 focus:outline-none transition-all ${
+              compact ? "py-2.5 text-xs sm:text-sm" : "py-3.5 sm:py-4 text-sm sm:text-base"
             }`}
           />
           <button
             type="submit"
             disabled={isLoading || !topic.trim()}
-            className={`absolute right-1.5 sm:right-2 top-1/2 -translate-y-1/2 rounded-xl bg-amber-600 font-semibold text-white shadow-xs transition-all hover:bg-amber-700 active:scale-95 disabled:opacity-50 disabled:pointer-events-none flex items-center gap-1.5 sm:gap-2 ${
-              compact ? "px-3 py-1.5 text-xs" : "px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm"
+            className={`absolute right-1.5 sm:right-2 top-1/2 -translate-y-1/2 rounded-full glass-pill-active font-semibold shadow-xs transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none flex items-center gap-1.5 sm:gap-2 ${
+              compact ? "px-3.5 py-1.5 text-xs" : "px-5 sm:px-6 py-2 sm:py-2.5 text-xs sm:text-sm"
             }`}
           >
             {isLoading ? (
               <>
-                <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin text-white" />
                 <span>Analyzing</span>
               </>
             ) : (
@@ -105,10 +120,10 @@ export function SearchBar({
           <button
             type="button"
             onClick={() => setShowApiKeyField(!showApiKeyField)}
-            className={`flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-medium transition-colors shrink-0 ${
+            className={`flex items-center justify-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition-all shrink-0 ${
               showApiKeyField || apiKey
-                ? "border-amber-400 bg-amber-50 text-amber-800"
-                : "border-stone-200 bg-white/90 text-stone-600 hover:bg-stone-50 hover:text-stone-900"
+                ? "glass-pill-active"
+                : "glass-pill text-slate-700"
             }`}
           >
             <span>FetchLayer Key</span>
@@ -123,7 +138,7 @@ export function SearchBar({
           <button
             type="button"
             onClick={() => setShowApiKeyField(!showApiKeyField)}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-stone-500 hover:text-stone-800 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors"
           >
             <span>{showApiKeyField ? "Hide" : "Use your own"} FetchLayer key (optional)</span>
             {showApiKeyField ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
@@ -134,27 +149,57 @@ export function SearchBar({
       {/* Collapsible FetchLayer API Key Drawer */}
       {showApiKeyField && (
         <div className={`mt-3 w-full px-2 sm:px-0 ${compact ? "max-w-4xl" : "max-w-2xl"}`}>
-          <div className="rounded-2xl border border-amber-200/80 bg-amber-50/50 p-3.5 sm:p-4 shadow-2xs">
+          <div className="rounded-3xl glass-panel p-4 shadow-sm">
             <ApiKeyField apiKey={apiKey} onChange={setApiKey} />
           </div>
         </div>
       )}
 
-      {/* Suggested Topics Pills */}
+      {/* Genre Filter & Suggested Topics (Hero Mode) */}
       {!compact && suggestedTopics.length > 0 && (
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 max-w-2xl px-2">
-          <span className="text-xs font-medium text-stone-400">Popular topics:</span>
-          {suggestedTopics.slice(0, 5).map((s) => (
-            <button
-              key={s.topic_key}
-              type="button"
-              onClick={() => handleSelectSuggested(s.topic_key)}
-              className="rounded-full border border-stone-200 bg-white/80 px-3 py-1 text-xs font-medium text-stone-700 shadow-2xs hover:border-amber-400 hover:text-amber-800 hover:bg-amber-50/40 transition-all active:scale-95"
-            >
-              <span className="max-w-[140px] sm:max-w-[180px] truncate inline-block align-middle">{s.topic_key}</span>
-              <span className="ml-1 text-[10px] text-stone-400">({s.n})</span>
-            </button>
-          ))}
+        <div className="mt-8 w-full max-w-3xl px-2 space-y-3">
+          {/* Genre Category Pills */}
+          <div className="flex flex-wrap items-center justify-center gap-1.5">
+            {POPULAR_GENRES.map((g) => {
+              const isSelected = activeGenreFilter === g.id;
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => setActiveGenreFilter(g.id)}
+                  className={`rounded-full px-3 py-1 text-[11px] font-semibold transition-all cursor-pointer ${
+                    isSelected
+                      ? "glass-pill-active shadow-sm"
+                      : "glass-pill text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  {g.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Filtered Topic Capsules */}
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+            {filteredSuggestions.slice(0, 8).map((s) => {
+              const genre = s.genre || normalizeGenre(s.topic_key);
+              return (
+                <button
+                  key={s.topic_key}
+                  type="button"
+                  onClick={() => handleSelectSuggested(s.topic_key)}
+                  className="group rounded-full glass-pill px-3.5 py-1.5 text-xs font-medium text-slate-800 transition-all hover:scale-102 active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span className="font-semibold max-w-[140px] sm:max-w-[200px] truncate inline-block align-middle">
+                    {s.topic_key}
+                  </span>
+                  <span className="text-[10px] text-slate-400 group-hover:text-slate-600 font-normal">
+                    · {genre} ({s.n})
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
