@@ -5,7 +5,10 @@ alter table public.absa_tweets
   add column if not exists context_url text,
   add column if not exists rationale text;
 
-create or replace view public.absa_tweets_v
+-- Drop existing view to avoid PostgreSQL 42P16 column position mismatch
+drop view if exists public.absa_tweets_v cascade;
+
+create view public.absa_tweets_v
 with (security_invoker = true)
 as
 select id, topic_key, aspect, "user" as handle, "time" as tweeted_at, text, cleaned_text,
@@ -15,4 +18,3 @@ select id, topic_key, aspect, "user" as handle, "time" as tweeted_at, text, clea
 from public.absa_tweets;
 
 grant select on public.absa_tweets_v to anon, authenticated, service_role;
-alter view if exists public.absa_tweets_v set (security_invoker = true);
