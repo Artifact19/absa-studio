@@ -197,10 +197,12 @@ export interface FetchLayerRawPost {
 export type FetchLayerRawTweet = FetchLayerRawPost;
 
 export interface FetchLayerSearchResponse {
+  items?: FetchLayerRawPost[];
   tweets?: FetchLayerRawPost[];
   results?: FetchLayerRawPost[];
   data?: FetchLayerRawPost[];
   posts?: FetchLayerRawPost[];
   nextCursor?: string | null;
   cursor?: string | null;
+  after?: string | null;
 }

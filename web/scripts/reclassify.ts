@@ -5,10 +5,26 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
-import * as dotenv from "dotenv";
+import * as fs from "fs";
 import * as path from "path";
 
-dotenv.config({ path: path.resolve(__dirname, "../.env.local") });
+// Read .env.local without third-party dependencies
+const envPath = path.resolve(__dirname, "../.env.local");
+if (fs.existsSync(envPath)) {
+  const content = fs.readFileSync(envPath, "utf-8");
+  for (const line of content.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eqIdx = trimmed.indexOf("=");
+    if (eqIdx !== -1) {
+      const k = trimmed.slice(0, eqIdx).trim();
+      const v = trimmed.slice(eqIdx + 1).trim();
+      if (!process.env[k]) {
+        process.env[k] = v;
+      }
+    }
+  }
+}
 
 const supabaseUrl = process.env.SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -63,10 +79,10 @@ export async function reclassifyTopic(topicKeyFilter?: string) {
   console.log(`Starting reclassification pipeline...`);
   console.log(`Target Space: ${hfBaseUrl}`);
 
-  // 1. Fetch records to reclassify
+  // 1. Fetch records to reclassify (including dedup_key for unique targeting)
   let query = supabase
     .from("absa_tweets")
-    .select("id, topic_key, aspect, cleaned_text, text");
+    .select("id, dedup_key, topic_key, aspect, cleaned_text, text");
 
   if (topicKeyFilter) {
     query = query.eq("topic_key", topicKeyFilter.toLowerCase().trim());
@@ -107,7 +123,8 @@ export async function reclassifyTopic(topicKeyFilter?: string) {
           if (!item) continue;
           const row = batch[j];
 
-          const { error: updateErr } = await supabase
+          // Target update by (topic_key, dedup_key) unique constraint or id
+          let updateQuery = supabase
             .from("absa_tweets")
             .update({
               "qwen2.5-3b-instruct_sentiment": item.label,
@@ -115,11 +132,39 @@ export async function reclassifyTopic(topicKeyFilter?: string) {
               qwen_prob_neg: item.prob_neg,
               qwen_prob_neu: item.prob_neu,
               rationale: item.rationale || null,
-            })
-            .eq("id", row.id);
+            });
+
+          if (row.dedup_key) {
+            updateQuery = updateQuery.eq("topic_key", row.topic_key).eq("dedup_key", row.dedup_key);
+          } else {
+            updateQuery = updateQuery.eq("id", row.id);
+          }
+
+          let { error: updateErr } = await updateQuery;
+
+          if (updateErr && updateErr.message?.includes("rationale")) {
+            // Fallback for legacy schema without rationale column
+            let fbQuery = supabase
+              .from("absa_tweets")
+              .update({
+                "qwen2.5-3b-instruct_sentiment": item.label,
+                qwen_prob_pos: item.prob_pos,
+                qwen_prob_neg: item.prob_neg,
+                qwen_prob_neu: item.prob_neu,
+              });
+
+            if (row.dedup_key) {
+              fbQuery = fbQuery.eq("topic_key", row.topic_key).eq("dedup_key", row.dedup_key);
+            } else {
+              fbQuery = fbQuery.eq("id", row.id);
+            }
+
+            const fallback = await fbQuery;
+            updateErr = fallback.error;
+          }
 
           if (updateErr) {
-            console.warn(`    Failed to update row ${row.id}:`, updateErr.message);
+            console.warn(`    Failed to update row:`, updateErr.message);
           } else {
             totalUpdated++;
           }
@@ -130,7 +175,7 @@ export async function reclassifyTopic(topicKeyFilter?: string) {
     }
   }
 
-  console.log(`\nReclassification complete! Successfully updated ${totalUpdated} records in Supabase.`);
+  console.log(`\nReclassification complete! Successfully updated ${totalUpdated} records in Supabase with CoT model.`);
 }
 
 const targetTopic = process.argv[2];

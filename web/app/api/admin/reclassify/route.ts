@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
     let query = supabase
       .from("absa_tweets")
-      .select("id, topic_key, aspect, cleaned_text, text");
+      .select("id, dedup_key, topic_key, aspect, cleaned_text, text");
 
     if (targetTopic) {
       query = query.eq("topic_key", targetTopic);
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
             if (!item) continue;
             const row = batch[j];
 
-            const { error: updateErr } = await supabase
+            let updateQuery = supabase
               .from("absa_tweets")
               .update({
                 "qwen2.5-3b-instruct_sentiment": item.label,
@@ -66,8 +66,35 @@ export async function POST(req: NextRequest) {
                 qwen_prob_neg: item.prob_neg,
                 qwen_prob_neu: item.prob_neu,
                 rationale: item.rationale || null,
-              })
-              .eq("id", row.id);
+              });
+
+            if (row.dedup_key) {
+              updateQuery = updateQuery.eq("topic_key", row.topic_key).eq("dedup_key", row.dedup_key);
+            } else {
+              updateQuery = updateQuery.eq("id", row.id);
+            }
+
+            let { error: updateErr } = await updateQuery;
+
+            if (updateErr && updateErr.message?.includes("rationale")) {
+              let fbQuery = supabase
+                .from("absa_tweets")
+                .update({
+                  "qwen2.5-3b-instruct_sentiment": item.label,
+                  qwen_prob_pos: item.prob_pos,
+                  qwen_prob_neg: item.prob_neg,
+                  qwen_prob_neu: item.prob_neu,
+                });
+
+              if (row.dedup_key) {
+                fbQuery = fbQuery.eq("topic_key", row.topic_key).eq("dedup_key", row.dedup_key);
+              } else {
+                fbQuery = fbQuery.eq("id", row.id);
+              }
+
+              const fallback = await fbQuery;
+              updateErr = fallback.error;
+            }
 
             if (!updateErr) {
               updatedCount++;

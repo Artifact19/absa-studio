@@ -104,7 +104,7 @@ export async function fetchPostsFromFetchLayer({
 
       return {
         posts: normalized,
-        cursor: data.nextCursor || data.cursor || null,
+        cursor: data.nextCursor || data.cursor || data.after || null,
       };
     } catch (err) {
       console.warn("FetchLayer Twitter fetch error:", err);
@@ -118,8 +118,10 @@ export async function fetchPostsFromFetchLayer({
       const payload: Record<string, unknown> = {
         query: query.trim(),
         sort: "relevance",
+        limit: Math.min(targetPerPlatform, 50),
         count: Math.min(targetPerPlatform, 50),
       };
+      if (cursor) payload.cursor = cursor;
 
       const res = await fetch(`${baseUrl}/reddit/search`, {
         method: "POST",
@@ -136,7 +138,7 @@ export async function fetchPostsFromFetchLayer({
       }
 
       const data = (await res.json()) as FetchLayerSearchResponse;
-      const rawList = data.posts || data.results || data.data || data.tweets || [];
+      const rawList = data.items || data.posts || data.results || data.data || data.tweets || [];
       const normalized: NormalizedScrapedPost[] = [];
 
       for (const item of rawList) {
@@ -185,7 +187,7 @@ export async function fetchPostsFromFetchLayer({
 
       return {
         posts: normalized,
-        cursor: data.nextCursor || data.cursor || null,
+        cursor: data.nextCursor || data.cursor || data.after || null,
       };
     } catch (err) {
       console.warn("FetchLayer Reddit fetch error:", err);
