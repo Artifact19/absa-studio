@@ -297,7 +297,10 @@ export default function HomePage() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                <ProvenanceBadge count={analyzedData.counts.total} />
+                <ProvenanceBadge
+                  count={analyzedData.counts.total}
+                  platformBreakdown={analyzedData.platformBreakdown}
+                />
                 <VelocityBadge velocity={analyzedData.velocity} />
               </div>
             </div>
@@ -338,7 +341,7 @@ export default function HomePage() {
             {/* Evidence Cards */}
             <div className="space-y-3">
               <h3 className="text-base font-bold text-slate-900">
-                Ground-Truth Evidence on X
+                Ground-Truth Evidence on 𝕏 and Reddit
               </h3>
               <EvidenceList
                 positiveEvidence={analyzedData.evidence.positive}

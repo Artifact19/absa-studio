@@ -4,11 +4,17 @@ export type TimeWindowId = "today" | "7d" | "30d" | "1y" | "all";
 
 export type VelocityState = "bullish" | "declining" | "stable" | "insufficient";
 
+export type SocialPlatform = "twitter" | "reddit";
+
 export interface Evidence {
   handle: string;
   time: string;
   text: string;
   confidence: number;
+  platform?: SocialPlatform;
+  subreddit?: string;
+  url?: string;
+  rationale?: string;
 }
 
 export interface AvailableWindow {
@@ -32,10 +38,17 @@ export interface VelocityData {
   pBaseline: number;
 }
 
+export interface PlatformBreakdown {
+  twitter: number;
+  reddit: number;
+  total: number;
+}
+
 export interface AnalyzeResponse {
   topic: string;
   aspect: string;
   genre: string;
+  platformBreakdown?: PlatformBreakdown;
   coverage: {
     oldest: string;
     newest: string;
@@ -101,6 +114,9 @@ export interface AdminTweet {
   topic_key: string;
   aspect: string | null;
   genre?: string;
+  platform?: SocialPlatform;
+  subreddit?: string;
+  context_url?: string;
   handle: string;
   tweeted_at: string;
   text: string;
@@ -128,6 +144,7 @@ export interface HFClassifyItem {
   prob_neg: number;
   prob_neu: number;
   confidence: number;
+  rationale?: string;
 }
 
 export interface HFClassifyResp {
@@ -138,6 +155,7 @@ export interface HFSynthEvidence {
   user: string;
   text: string;
   confidence: number;
+  rationale?: string;
 }
 
 export interface HFSynthReq {
@@ -150,27 +168,39 @@ export interface HFSynthReq {
   top_negative: HFSynthEvidence[];
 }
 
-export interface FetchLayerRawTweet {
+export interface FetchLayerRawPost {
   id?: string | number;
   text?: string;
+  body?: string;
+  title?: string;
+  selftext?: string;
   createdAt?: string;
   created_at?: string;
   time?: string;
+  created_utc?: number;
   author?: {
     handle?: string;
     username?: string;
     name?: string;
-  };
+  } | string;
   user?: {
     handle?: string;
     username?: string;
-  };
+  } | string;
+  platform?: SocialPlatform;
+  subreddit?: string;
+  subreddit_name_prefixed?: string;
+  url?: string;
+  permalink?: string;
 }
 
+export type FetchLayerRawTweet = FetchLayerRawPost;
+
 export interface FetchLayerSearchResponse {
-  tweets?: FetchLayerRawTweet[];
-  results?: FetchLayerRawTweet[];
-  data?: FetchLayerRawTweet[];
+  tweets?: FetchLayerRawPost[];
+  results?: FetchLayerRawPost[];
+  data?: FetchLayerRawPost[];
+  posts?: FetchLayerRawPost[];
   nextCursor?: string | null;
   cursor?: string | null;
 }

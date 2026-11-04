@@ -2,8 +2,9 @@
 
 import React, { useState } from "react";
 import { AdminTweet, SentimentLabel } from "@/lib/types";
-import { ArrowUpDown, Search, ChevronLeft, ChevronRight, ToggleLeft, ToggleRight } from "lucide-react";
+import { ArrowUpDown, Search, ChevronLeft, ChevronRight, ToggleLeft, ToggleRight, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
+import { PlatformIcon } from "@/components/PlatformIcon";
 
 interface TweetTableProps {
   tweets: AdminTweet[];
@@ -85,7 +86,7 @@ export function TweetTable({
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search tweet text or handle..."
+            placeholder="Search post text or handle..."
             className="w-full rounded-full glass-input py-2 pl-9 pr-3 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none"
           />
         </form>
@@ -134,6 +135,7 @@ export function TweetTable({
                   <ArrowUpDown className="h-3 w-3" />
                 </button>
               </th>
+              <th className="py-3 px-4 font-semibold">Platform</th>
               <th className="py-3 px-4 font-semibold">Topic / Aspect</th>
               <th className="py-3 px-4 font-semibold">Genre</th>
               <th className="py-3 px-4 font-semibold">
@@ -142,7 +144,7 @@ export function TweetTable({
                   onClick={() => handleSortToggle("user")}
                   className="flex items-center gap-1 hover:text-slate-900"
                 >
-                  <span>Handle</span>
+                  <span>Author</span>
                   <ArrowUpDown className="h-3 w-3" />
                 </button>
               </th>
@@ -166,20 +168,20 @@ export function TweetTable({
                   <ArrowUpDown className="h-3 w-3" />
                 </button>
               </th>
-              <th className="py-3 px-4 font-semibold min-w-[280px]">Tweet Content</th>
+              <th className="py-3 px-4 font-semibold min-w-[280px]">Post Content</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/40 text-slate-800">
             {isLoading ? (
               <tr>
-                <td colSpan={7} className="py-12 text-center text-slate-400">
-                  Loading tweets...
+                <td colSpan={8} className="py-12 text-center text-slate-400">
+                  Loading posts...
                 </td>
               </tr>
             ) : tweets.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-12 text-center text-slate-400">
-                  No tweet records found matching current query.
+                <td colSpan={8} className="py-12 text-center text-slate-400">
+                  No post records found matching current query.
                 </td>
               </tr>
             ) : (
@@ -189,11 +191,18 @@ export function TweetTable({
                   ? format(dateObj, "MMM d, yyyy HH:mm")
                   : t.tweeted_at;
                 const displayText = showCleanedText ? t.cleaned_text : t.text;
+                const isReddit = t.platform === "reddit";
 
                 return (
                   <tr key={t.id} className="hover:bg-white/40 transition-colors">
                     <td className="py-3 px-4 whitespace-nowrap text-slate-500 tabular-nums">
                       {timeStr}
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1.5 rounded-full glass-pill px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                        <PlatformIcon platform={t.platform || "twitter"} className="h-3.5 w-3.5" />
+                        <span>{isReddit ? (t.subreddit ? `r/${t.subreddit}` : "Reddit") : "𝕏"}</span>
+                      </span>
                     </td>
                     <td className="py-3 px-4 whitespace-nowrap font-bold text-slate-900">
                       {t.aspect || t.topic_key}
@@ -208,7 +217,19 @@ export function TweetTable({
                       )}
                     </td>
                     <td className="py-3 px-4 whitespace-nowrap font-medium text-slate-600">
-                      @{t.handle}
+                      <div className="flex items-center gap-1.5">
+                        <span>{isReddit ? `u/${t.handle}` : `@${t.handle}`}</span>
+                        {t.context_url && (
+                          <a
+                            href={t.context_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-slate-400 hover:text-slate-700 transition-colors"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3 px-4 whitespace-nowrap">
                       {renderSentimentBadge(t.sentiment)}

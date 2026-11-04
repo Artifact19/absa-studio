@@ -4,7 +4,7 @@ import { normalizeTopicKey, cleanTweetText, sanitizeHandle, sanitizePostgrestFil
 import { classifyTopicGenre } from "@/lib/genre";
 import { computeDedupKey } from "@/lib/dedup";
 import { hf } from "@/lib/hf";
-import { fetchTweetsFromFetchLayer } from "@/lib/fetchlayer";
+import { fetchPostsFromFetchLayer } from "@/lib/fetchlayer";
 import {
   computeDynamicWindows,
   filterTweetsByWindow,
@@ -19,6 +19,8 @@ import {
   HFExtractResp,
   Evidence,
   SentimentLabel,
+  SocialPlatform,
+  PlatformBreakdown,
 } from "@/lib/types";
 import { checkPublicEndpointRateLimit } from "@/lib/ratelimit";
 
@@ -50,26 +52,29 @@ export async function POST(req: NextRequest) {
     const topicKey = normalizeTopicKey(rawTopic);
     const supabase = sb();
 
-    // 1. If FetchLayer API key provided, fetch and ingest new posts first
+    // 1. If FetchLayer API key provided, fetch and ingest new posts (X + Reddit)
     if (userApiKey) {
       try {
-        const scrapeResult = await fetchTweetsFromFetchLayer({
+        const scrapeResult = await fetchPostsFromFetchLayer({
           query: rawTopic,
           count: 48, // Vercel Hobby safe chunk
           apiKey: userApiKey,
+          platforms: ["twitter", "reddit"],
         });
 
-        if (scrapeResult.tweets.length > 0) {
+        if (scrapeResult.posts.length > 0) {
           // Preprocess and compute dedup keys
-          const candidateRows = scrapeResult.tweets.map((t) => {
-            const cleaned = cleanTweetText(t.text);
-            const dedupKey = computeDedupKey(cleaned, t.user);
-            return {
-              rawTweet: t,
-              cleaned,
-              dedupKey,
-            };
-          }).filter((c) => c.cleaned.length > 0);
+          const candidateRows = scrapeResult.posts
+            .map((p) => {
+              const cleaned = cleanTweetText(p.text);
+              const dedupKey = computeDedupKey(cleaned, p.user);
+              return {
+                rawPost: p,
+                cleaned,
+                dedupKey,
+              };
+            })
+            .filter((c) => c.cleaned.length > 0);
 
           // Check which keys already exist in DB
           const dedupKeys = candidateRows.map((c) => c.dedupKey);
@@ -96,7 +101,7 @@ export async function POST(req: NextRequest) {
 
             // Classify in batches of 16
             const batchSize = 16;
-            const insertRows = [];
+            const insertRows: Array<Record<string, unknown>> = [];
 
             for (let i = 0; i < newCandidates.length; i += batchSize) {
               const batch = newCandidates.slice(i, i + batchSize);
@@ -116,11 +121,15 @@ export async function POST(req: NextRequest) {
                   insertRows.push({
                     topic_key: topicKey,
                     aspect: aspect,
-                    user: cand.rawTweet.user,
-                    time: new Date(cand.rawTweet.time).toISOString(),
-                    text: cand.rawTweet.text,
+                    user: cand.rawPost.user,
+                    time: new Date(cand.rawPost.time).toISOString(),
+                    text: cand.rawPost.text,
                     cleaned_text: cand.cleaned,
                     dedup_key: cand.dedupKey,
+                    platform: cand.rawPost.platform || "twitter",
+                    subreddit: cand.rawPost.subreddit || null,
+                    context_url: cand.rawPost.url || null,
+                    rationale: item.rationale || null,
                     "qwen2.5-3b-instruct_sentiment": item.label,
                     qwen_prob_pos: item.prob_pos,
                     qwen_prob_neg: item.prob_neg,
@@ -133,9 +142,20 @@ export async function POST(req: NextRequest) {
             }
 
             if (insertRows.length > 0) {
-              await supabase
+              const { error: upsertErr } = await supabase
                 .from("absa_tweets")
                 .upsert(insertRows, { onConflict: "topic_key,dedup_key", ignoreDuplicates: true });
+
+              if (upsertErr) {
+                console.warn("Retrying upsert with legacy schema fallback...", upsertErr.message);
+                const legacyRows = insertRows.map((r) => {
+                  const { platform, subreddit, context_url, rationale, ...legacy } = r;
+                  return legacy;
+                });
+                await supabase
+                  .from("absa_tweets")
+                  .upsert(legacyRows, { onConflict: "topic_key,dedup_key", ignoreDuplicates: true });
+              }
             }
           }
         }
@@ -144,7 +164,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 2. Query historical tweets for this topic from absa_tweets_v
+    // 2. Query historical posts for this topic from absa_tweets_v
     const candidateKeys = Array.from(
       new Set(
         [
@@ -156,7 +176,7 @@ export async function POST(req: NextRequest) {
       )
     );
 
-    let rows: Array<{
+    interface DBRow {
       aspect: string | null;
       tweeted_at: string;
       text: string;
@@ -166,18 +186,58 @@ export async function POST(req: NextRequest) {
       p_neg: number | null;
       p_neu: number | null;
       handle: string | null;
-    }> | null = null;
+      platform?: string | null;
+      subreddit?: string | null;
+      context_url?: string | null;
+      rationale?: string | null;
+    }
 
+    const mapRawToDBRows = (list: Array<Record<string, unknown>>): DBRow[] =>
+      list.map((d) => ({
+        aspect: (d.aspect as string) || null,
+        tweeted_at: (d.tweeted_at as string) || (d.time as string) || new Date().toISOString(),
+        text: (d.text as string) || "",
+        cleaned_text: (d.cleaned_text as string) || "",
+        sentiment: (d.sentiment as string) || (d["qwen2.5-3b-instruct_sentiment"] as string) || "neutral",
+        p_pos: (d.p_pos as number) ?? (d.qwen_prob_pos as number) ?? null,
+        p_neg: (d.p_neg as number) ?? (d.qwen_prob_neg as number) ?? null,
+        p_neu: (d.p_neu as number) ?? (d.qwen_prob_neu as number) ?? null,
+        handle: (d.handle as string) || (d.user as string) || null,
+        platform: (d.platform as string) || "twitter",
+        subreddit: (d.subreddit as string) || null,
+        context_url: (d.context_url as string) || null,
+        rationale: (d.rationale as string) || null,
+      }));
+
+    let rows: DBRow[] | null = null;
     let permissionIssue = false;
     let apiKeyIssue = false;
 
+    const selectColumnsWithPlatform =
+      "aspect, tweeted_at, text, cleaned_text, sentiment, p_pos, p_neg, p_neu, handle, platform, subreddit, context_url, rationale";
+    const selectColumnsLegacy =
+      "aspect, tweeted_at, text, cleaned_text, sentiment, p_pos, p_neg, p_neu, handle";
+
     try {
       // 1. Try querying absa_tweets_v with candidate keys
-      const { data: vData, error: vErr } = await supabase
+      const res1 = await supabase
         .from("absa_tweets_v")
-        .select("aspect, tweeted_at, text, cleaned_text, sentiment, p_pos, p_neg, p_neu, handle")
+        .select(selectColumnsWithPlatform)
         .in("topic_key", candidateKeys)
         .order("tweeted_at", { ascending: false });
+
+      let vData = res1.data as Array<Record<string, unknown>> | null;
+      let vErr = res1.error;
+
+      if (vErr && vErr.message?.toLowerCase().includes("does not exist")) {
+        const fallback = await supabase
+          .from("absa_tweets_v")
+          .select(selectColumnsLegacy)
+          .in("topic_key", candidateKeys)
+          .order("tweeted_at", { ascending: false });
+        vData = fallback.data as Array<Record<string, unknown>> | null;
+        vErr = fallback.error;
+      }
 
       if (vErr) {
         if (vErr.message?.toLowerCase().includes("permission denied")) {
@@ -187,7 +247,7 @@ export async function POST(req: NextRequest) {
           apiKeyIssue = true;
         }
       } else if (vData && vData.length > 0) {
-        rows = vData;
+        rows = mapRawToDBRows(vData);
       }
 
       // 2. If no rows found yet, try ILIKE search on topic_key or aspect in view
@@ -195,9 +255,7 @@ export async function POST(req: NextRequest) {
       const safeAspectFilter = sanitizePostgrestFilter(rawTopic);
 
       if (!rows || rows.length === 0) {
-        let vQuery = supabase
-          .from("absa_tweets_v")
-          .select("aspect, tweeted_at, text, cleaned_text, sentiment, p_pos, p_neg, p_neu, handle");
+        let vQuery = supabase.from("absa_tweets_v").select(selectColumnsWithPlatform);
 
         if (safeTopicFilter && safeAspectFilter) {
           vQuery = vQuery.or(`topic_key.ilike.%${safeTopicFilter}%,aspect.ilike.%${safeAspectFilter}%`);
@@ -207,7 +265,23 @@ export async function POST(req: NextRequest) {
           vQuery = vQuery.ilike("aspect", `%${safeAspectFilter}%`);
         }
 
-        const { data: vIlike, error: vIlikeErr } = await vQuery.order("tweeted_at", { ascending: false });
+        const res2 = await vQuery.order("tweeted_at", { ascending: false });
+        let vIlike = res2.data as Array<Record<string, unknown>> | null;
+        let vIlikeErr = res2.error;
+
+        if (vIlikeErr && vIlikeErr.message?.toLowerCase().includes("does not exist")) {
+          let fallbackQ = supabase.from("absa_tweets_v").select(selectColumnsLegacy);
+          if (safeTopicFilter && safeAspectFilter) {
+            fallbackQ = fallbackQ.or(`topic_key.ilike.%${safeTopicFilter}%,aspect.ilike.%${safeAspectFilter}%`);
+          } else if (safeTopicFilter) {
+            fallbackQ = fallbackQ.ilike("topic_key", `%${safeTopicFilter}%`);
+          } else if (safeAspectFilter) {
+            fallbackQ = fallbackQ.ilike("aspect", `%${safeAspectFilter}%`);
+          }
+          const fb = await fallbackQ.order("tweeted_at", { ascending: false });
+          vIlike = fb.data as Array<Record<string, unknown>> | null;
+          vIlikeErr = fb.error;
+        }
 
         if (vIlikeErr) {
           if (vIlikeErr.message?.toLowerCase().includes("permission denied")) {
@@ -217,17 +291,30 @@ export async function POST(req: NextRequest) {
             apiKeyIssue = true;
           }
         } else if (vIlike && vIlike.length > 0) {
-          rows = vIlike;
+          rows = mapRawToDBRows(vIlike);
         }
       }
 
       // 3. Fallback: query raw table absa_tweets
       if (!rows || rows.length === 0) {
-        const { data: tData, error: tErr } = await supabase
+        const res3 = await supabase
           .from("absa_tweets")
-          .select('aspect, time, text, cleaned_text, "qwen2.5-3b-instruct_sentiment", qwen_prob_pos, qwen_prob_neg, qwen_prob_neu, "user"')
+          .select('aspect, time, text, cleaned_text, "qwen2.5-3b-instruct_sentiment", qwen_prob_pos, qwen_prob_neg, qwen_prob_neu, "user", platform, subreddit, context_url, rationale')
           .in("topic_key", candidateKeys)
           .order("time", { ascending: false });
+
+        let tData = res3.data as Array<Record<string, unknown>> | null;
+        let tErr = res3.error;
+
+        if (tErr && tErr.message?.toLowerCase().includes("does not exist")) {
+          const fb = await supabase
+            .from("absa_tweets")
+            .select('aspect, time, text, cleaned_text, "qwen2.5-3b-instruct_sentiment", qwen_prob_pos, qwen_prob_neg, qwen_prob_neu, "user"')
+            .in("topic_key", candidateKeys)
+            .order("time", { ascending: false });
+          tData = fb.data as Array<Record<string, unknown>> | null;
+          tErr = fb.error;
+        }
 
         if (tErr) {
           if (tErr.message?.toLowerCase().includes("permission denied")) {
@@ -237,17 +324,7 @@ export async function POST(req: NextRequest) {
             apiKeyIssue = true;
           }
         } else if (tData && tData.length > 0) {
-          rows = tData.map((d) => ({
-            aspect: d.aspect,
-            tweeted_at: d.time,
-            text: d.text,
-            cleaned_text: d.cleaned_text,
-            sentiment: (d as Record<string, unknown>)["qwen2.5-3b-instruct_sentiment"] as string,
-            p_pos: d.qwen_prob_pos,
-            p_neg: d.qwen_prob_neg,
-            p_neu: d.qwen_prob_neu,
-            handle: (d as Record<string, unknown>)["user"] as string,
-          }));
+          rows = mapRawToDBRows(tData);
         }
       }
 
@@ -255,7 +332,7 @@ export async function POST(req: NextRequest) {
       if (!rows || rows.length === 0) {
         let tQuery = supabase
           .from("absa_tweets")
-          .select('aspect, time, text, cleaned_text, "qwen2.5-3b-instruct_sentiment", qwen_prob_pos, qwen_prob_neg, qwen_prob_neu, "user"');
+          .select('aspect, time, text, cleaned_text, "qwen2.5-3b-instruct_sentiment", qwen_prob_pos, qwen_prob_neg, qwen_prob_neu, "user", platform, subreddit, context_url, rationale');
 
         if (safeTopicFilter && safeAspectFilter) {
           tQuery = tQuery.or(`topic_key.ilike.%${safeTopicFilter}%,aspect.ilike.%${safeAspectFilter}%`);
@@ -265,7 +342,26 @@ export async function POST(req: NextRequest) {
           tQuery = tQuery.ilike("aspect", `%${safeAspectFilter}%`);
         }
 
-        const { data: tIlike, error: tIlikeErr } = await tQuery.order("time", { ascending: false });
+        const res4 = await tQuery.order("time", { ascending: false });
+        let tIlike = res4.data as Array<Record<string, unknown>> | null;
+        let tIlikeErr = res4.error;
+
+        if (tIlikeErr && tIlikeErr.message?.toLowerCase().includes("does not exist")) {
+          let fbQuery = supabase
+            .from("absa_tweets")
+            .select('aspect, time, text, cleaned_text, "qwen2.5-3b-instruct_sentiment", qwen_prob_pos, qwen_prob_neg, qwen_prob_neu, "user"');
+
+          if (safeTopicFilter && safeAspectFilter) {
+            fbQuery = fbQuery.or(`topic_key.ilike.%${safeTopicFilter}%,aspect.ilike.%${safeAspectFilter}%`);
+          } else if (safeTopicFilter) {
+            fbQuery = fbQuery.ilike("topic_key", `%${safeTopicFilter}%`);
+          } else if (safeAspectFilter) {
+            fbQuery = fbQuery.ilike("aspect", `%${safeAspectFilter}%`);
+          }
+          const fb = await fbQuery.order("time", { ascending: false });
+          tIlike = fb.data as Array<Record<string, unknown>> | null;
+          tIlikeErr = fb.error;
+        }
 
         if (tIlikeErr) {
           if (tIlikeErr.message?.toLowerCase().includes("permission denied")) {
@@ -275,17 +371,7 @@ export async function POST(req: NextRequest) {
             apiKeyIssue = true;
           }
         } else if (tIlike && tIlike.length > 0) {
-          rows = tIlike.map((d) => ({
-            aspect: d.aspect,
-            tweeted_at: d.time,
-            text: d.text,
-            cleaned_text: d.cleaned_text,
-            sentiment: (d as Record<string, unknown>)["qwen2.5-3b-instruct_sentiment"] as string,
-            p_pos: d.qwen_prob_pos,
-            p_neg: d.qwen_prob_neg,
-            p_neu: d.qwen_prob_neu,
-            handle: (d as Record<string, unknown>)["user"] as string,
-          }));
+          rows = mapRawToDBRows(tIlike);
         }
       }
     } catch (dbErr) {
@@ -321,7 +407,7 @@ export async function POST(req: NextRequest) {
         {
           notFound: true,
           message:
-            "No posts found for this topic yet. Click 'FetchLayer Key' above and enter your FetchLayer API key to fetch and analyze fresh posts!",
+            "No posts found for this topic yet. Click 'FetchLayer Key' above and enter your FetchLayer API key to fetch and analyze fresh posts from X and Reddit!",
         },
         { status: 404 }
       );
@@ -338,6 +424,10 @@ export async function POST(req: NextRequest) {
       confidence: number;
       handle: string;
       text: string;
+      platform: SocialPlatform;
+      subreddit?: string;
+      url?: string;
+      rationale?: string;
     }
 
     const processedRows: ProcessedRow[] = rows.map((r) => {
@@ -346,6 +436,7 @@ export async function POST(req: NextRequest) {
       const p_neu = r.p_neu ?? 0;
       const confidence = Math.max(p_pos, p_neg, p_neu);
       const sentiment = (r.sentiment as SentimentLabel) || "neutral";
+      const platform: SocialPlatform = (r.platform?.toLowerCase() === "reddit" ? "reddit" : "twitter");
 
       return {
         time: r.tweeted_at,
@@ -356,8 +447,28 @@ export async function POST(req: NextRequest) {
         confidence,
         handle: sanitizeHandle(r.handle),
         text: r.text,
+        platform,
+        subreddit: r.subreddit || undefined,
+        url: r.context_url || undefined,
+        rationale: r.rationale || undefined,
       };
     });
+
+    // Compute platform breakdown
+    let twCount = 0;
+    let rdCount = 0;
+    for (const row of processedRows) {
+      if (row.platform === "reddit") {
+        rdCount++;
+      } else {
+        twCount++;
+      }
+    }
+    const platformBreakdown: PlatformBreakdown = {
+      twitter: twCount,
+      reddit: rdCount,
+      total: processedRows.length,
+    };
 
     // 3. Compute dynamic windows
     const { availableWindows, defaultWindowId } = computeDynamicWindows(processedRows, now);
@@ -391,6 +502,10 @@ export async function POST(req: NextRequest) {
         time: new Date(i.time).toISOString(),
         text: i.text,
         confidence: Number(i.confidence.toFixed(3)),
+        platform: i.platform,
+        subreddit: i.subreddit,
+        url: i.url,
+        rationale: i.rationale,
       }));
 
     const times = processedRows.map((t) => new Date(t.time).getTime());
@@ -427,6 +542,7 @@ export async function POST(req: NextRequest) {
       topic: rawTopic,
       aspect: aspectDisplay,
       genre,
+      platformBreakdown,
       coverage: {
         oldest: new Date(minTime).toISOString(),
         newest: new Date(maxTime).toISOString(),

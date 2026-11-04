@@ -40,7 +40,10 @@ function parseStreamedMarkdown(markdown: string): ParsedSections {
 
     if (trimmed.includes("10-Second Verdict") || trimmed.includes("Verdict")) {
       const content = trimmed.replace(/^##.*?\n/, "").trim();
-      result.verdict = content.replace(/^\*\*|\*\*$/g, "").trim();
+      result.verdict = content
+        .replace(/^\*\*|\*\*$/g, "")
+        .replace(/^[\s<"']+|[\s>"']+$/g, "")
+        .trim();
     } else if (trimmed.includes("The Exciting") || trimmed.includes("Exciting")) {
       const lines = trimmed.split("\n").slice(1);
       const bullets: ParsedBullet[] = [];
@@ -79,7 +82,10 @@ function parseStreamedMarkdown(markdown: string): ParsedSections {
       if (bullets.length > 0) result.frustrating = bullets;
     } else if (trimmed.includes("The Bottom Line") || trimmed.includes("Bottom Line")) {
       const content = trimmed.replace(/^##.*?\n/, "").trim();
-      result.bottomLine = content.replace(/^\*\*|\*\*$/g, "").trim();
+      result.bottomLine = content
+        .replace(/^\*\*|\*\*$/g, "")
+        .replace(/^[\s<"']+|[\s>"']+$/g, "")
+        .trim();
     }
   }
 

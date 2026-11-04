@@ -3,7 +3,7 @@ import { sb } from "@/lib/supabase-server";
 import { isRequestAuthorized, verifyCsrfOrigin } from "@/lib/auth";
 import { normalizeTopicKey, cleanTweetText } from "@/lib/clean";
 import { computeDedupKey } from "@/lib/dedup";
-import { fetchTweetsFromFetchLayer } from "@/lib/fetchlayer";
+import { fetchPostsFromFetchLayer, NormalizedScrapedPost } from "@/lib/fetchlayer";
 import { hf } from "@/lib/hf";
 import { HFClassifyResp, HFExtractResp } from "@/lib/types";
 
@@ -39,43 +39,44 @@ export async function POST(req: NextRequest) {
       try {
         sendEvent({
           stage: "initializing",
-          message: `Starting scrape for "${query}" (target: ${countToFetch} tweets)`,
+          message: `Starting multi-platform ingestion for "${query}" (target: ${countToFetch} posts across X & Reddit)`,
           done: 0,
           total: countToFetch,
         });
 
-        // 1. Fetch tweets from FetchLayer with pagination
-        const allFetched = [];
+        // 1. Fetch posts from FetchLayer (X + Reddit)
+        const allFetched: NormalizedScrapedPost[] = [];
         let cursor: string | undefined = undefined;
         let fetchDone = false;
 
         sendEvent({
           stage: "fetching",
-          message: "Querying FetchLayer Twitter search API...",
+          message: "Querying FetchLayer X (Twitter) and Reddit search APIs in parallel...",
           done: 0,
           total: countToFetch,
         });
 
         while (allFetched.length < countToFetch && !fetchDone) {
           const fetchBatchSize = Math.min(50, countToFetch - allFetched.length);
-          const result = await fetchTweetsFromFetchLayer({
+          const result = await fetchPostsFromFetchLayer({
             query,
             count: fetchBatchSize,
             apiKey: customKey,
             cursor,
+            platforms: ["twitter", "reddit"],
           });
 
-          if (!result.tweets || result.tweets.length === 0) {
+          if (!result.posts || result.posts.length === 0) {
             fetchDone = true;
             break;
           }
 
-          allFetched.push(...result.tweets);
+          allFetched.push(...result.posts);
           cursor = result.nextCursor || undefined;
 
           sendEvent({
             stage: "fetching",
-            message: `Fetched ${allFetched.length} of ${countToFetch} tweets...`,
+            message: `Fetched ${allFetched.length} of ${countToFetch} posts (𝕏 + Reddit)...`,
             done: Math.min(allFetched.length, countToFetch),
             total: countToFetch,
           });
@@ -88,7 +89,7 @@ export async function POST(req: NextRequest) {
         if (allFetched.length === 0) {
           sendEvent({
             stage: "error",
-            message: "No tweets found for this search query.",
+            message: "No posts found for this search query across X or Reddit.",
             done: 0,
             total: countToFetch,
           });
@@ -138,7 +139,7 @@ export async function POST(req: NextRequest) {
 
         sendEvent({
           stage: "deduplicating",
-          message: `Identified ${unseenCandidates.length} new unseen tweets (${duplicateCount} existing duplicates dropped)`,
+          message: `Identified ${unseenCandidates.length} new unseen posts (${duplicateCount} existing duplicates dropped)`,
           done: candidates.length,
           total: candidates.length,
         });
@@ -146,7 +147,7 @@ export async function POST(req: NextRequest) {
         if (unseenCandidates.length === 0) {
           sendEvent({
             stage: "completed",
-            message: "All fetched tweets already exist in database (zero new rows needed).",
+            message: "All fetched posts already exist in database (zero new rows needed).",
             done: countToFetch,
             total: countToFetch,
             inserted: 0,
@@ -170,7 +171,7 @@ export async function POST(req: NextRequest) {
         // 4. Classify in chunks of 16 using HF Space
         const batchSize = 16;
         const totalToClassify = unseenCandidates.length;
-        const rowsToInsert = [];
+        const rowsToInsert: Array<Record<string, unknown>> = [];
 
         for (let i = 0; i < totalToClassify; i += batchSize) {
           const batch = unseenCandidates.slice(i, i + batchSize);
@@ -178,7 +179,7 @@ export async function POST(req: NextRequest) {
 
           sendEvent({
             stage: "classifying",
-            message: `Classifying batch ${Math.floor(i / batchSize) + 1} of ${Math.ceil(totalToClassify / batchSize)} with Qwen2.5-3B...`,
+            message: `Classifying batch ${Math.floor(i / batchSize) + 1} of ${Math.ceil(totalToClassify / batchSize)} with Qwen2.5-3B CoT...`,
             done: i,
             total: totalToClassify,
           });
@@ -201,6 +202,10 @@ export async function POST(req: NextRequest) {
               text: cand.raw.text,
               cleaned_text: cand.cleaned,
               dedup_key: cand.dedupKey,
+              platform: cand.raw.platform || "twitter",
+              subreddit: cand.raw.subreddit || null,
+              context_url: cand.raw.url || null,
+              rationale: item.rationale || null,
               "qwen2.5-3b-instruct_sentiment": item.label,
               qwen_prob_pos: item.prob_pos,
               qwen_prob_neg: item.prob_neg,
@@ -222,12 +227,24 @@ export async function POST(req: NextRequest) {
           .upsert(rowsToInsert, { onConflict: "topic_key,dedup_key", ignoreDuplicates: true });
 
         if (upsertErr) {
-          throw upsertErr;
+          // Fallback to legacy schema if migration not yet run
+          console.warn("Retrying admin upsert with legacy columns...", upsertErr.message);
+          const legacyRows = rowsToInsert.map((r) => {
+            const { platform, subreddit, context_url, rationale, ...legacy } = r;
+            return legacy;
+          });
+          const { error: fallbackErr } = await supabase
+            .from("absa_tweets")
+            .upsert(legacyRows, { onConflict: "topic_key,dedup_key", ignoreDuplicates: true });
+
+          if (fallbackErr) {
+            throw fallbackErr;
+          }
         }
 
         sendEvent({
           stage: "completed",
-          message: `Successfully scraped, classified, and saved ${rowsToInsert.length} tweets!`,
+          message: `Successfully scraped, classified, and saved ${rowsToInsert.length} posts from X and Reddit!`,
           done: countToFetch,
           total: countToFetch,
           inserted: rowsToInsert.length,

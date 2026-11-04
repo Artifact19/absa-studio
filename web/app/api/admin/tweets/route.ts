@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sb } from "@/lib/supabase-server";
 import { isRequestAuthorized } from "@/lib/auth";
 import { sanitizePostgrestFilter } from "@/lib/clean";
-import { AdminTweet, SentimentLabel } from "@/lib/types";
+import { AdminTweet, SentimentLabel, SocialPlatform } from "@/lib/types";
 import { classifyTopicGenre } from "@/lib/genre";
 
 export async function GET(req: NextRequest) {
@@ -83,12 +83,16 @@ export async function GET(req: NextRequest) {
       const p_neg = r.p_neg ?? 0;
       const p_neu = r.p_neu ?? 0;
       const confidence = Math.max(p_pos, p_neg, p_neu);
+      const platform: SocialPlatform = r.platform?.toLowerCase() === "reddit" ? "reddit" : "twitter";
 
       return {
         id: r.id,
         topic_key: r.topic_key,
         genre: classifyTopicGenre(r.topic_key, r.aspect),
         aspect: r.aspect,
+        platform,
+        subreddit: r.subreddit || undefined,
+        context_url: r.context_url || undefined,
         handle: r.handle || "unknown",
         tweeted_at: r.tweeted_at,
         text: r.text,
