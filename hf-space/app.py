@@ -220,7 +220,7 @@ def classify_batch(req: ClassifyReq):
 INSIGHT_SYS = """You write executive sentiment briefs for busy readers. Output EXACTLY this markdown, nothing else:
 
 ## ⚡ 10-Second Verdict
-**One crisp sentence, exactly 15 words, summarizing the prevailing public consensus across X and Reddit without using any angle brackets.**
+**One crisp sentence, exactly 15 words, summarizing the prevailing public consensus across X and Reddit. Always state the real TARGET name explicitly; never use placeholder words like 'NAME' or '<NAME>', and never output angle brackets < or >.**
 
 ## 🟢 The Exciting
 - **[Two Word Theme]** One crisp sentence.
@@ -233,7 +233,7 @@ INSIGHT_SYS = """You write executive sentiment briefs for busy readers. Output E
 ## 🎯 The Bottom Line
 One single actionable sentence.
 
-Rules: use only the provided evidence from X and Reddit; synthesize across both communities; never invent facts; never output angle brackets < or >."""
+Rules: use only the provided evidence from X and Reddit; always name the target; synthesize across both communities; never invent facts; never output angle brackets < or >."""
 
 def _synth_prompt(r: SynthReq) -> str:
     pos = "\n".join(f"- ({e.confidence:.2f}) {e.text[:240]}" for e in r.top_positive)
@@ -241,7 +241,7 @@ def _synth_prompt(r: SynthReq) -> str:
     user = (
         f"Target: {r.target}\nPosts analyzed: {r.n_total}\n"
         f"Positive {r.pct_pos:.0f}% | Negative {r.pct_neg:.0f}% | Neutral {r.pct_neu:.0f}%\n\n"
-        f"<positive_evidence>\n{pos}\n</positive_evidence>\n\n<negative_evidence>\n{neg}\n</negative_evidence>"
+        f"--- POSITIVE POSTS ---\n{pos}\n\n--- NEGATIVE POSTS ---\n{neg}"
     )
     return chat(INSIGHT_SYS, user)
 

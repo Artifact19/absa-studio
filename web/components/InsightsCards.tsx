@@ -6,6 +6,7 @@ import { Sparkles, Zap, CheckCircle2, AlertCircle, Compass } from "lucide-react"
 interface InsightsCardsProps {
   streamedText: string;
   isStreaming: boolean;
+  topic?: string;
 }
 
 interface ParsedBullet {
@@ -21,7 +22,7 @@ interface ParsedSections {
   isParsed: boolean;
 }
 
-function parseStreamedMarkdown(markdown: string): ParsedSections {
+function parseStreamedMarkdown(markdown: string, topic?: string): ParsedSections {
   const result: ParsedSections = {
     verdict: "",
     exciting: [],
@@ -40,10 +41,15 @@ function parseStreamedMarkdown(markdown: string): ParsedSections {
 
     if (trimmed.includes("10-Second Verdict") || trimmed.includes("Verdict")) {
       const content = trimmed.replace(/^##.*?\n/, "").trim();
-      result.verdict = content
+      let cleaned = content
         .replace(/^\*\*|\*\*$/g, "")
-        .replace(/^[\s<"']+|[\s>"']+$/g, "")
+        .replace(/[<>]/g, "")
         .trim();
+
+      if (topic) {
+        cleaned = cleaned.replace(/\b(NAME|TARGET|Target)\b/g, topic);
+      }
+      result.verdict = cleaned.trim();
     } else if (trimmed.includes("The Exciting") || trimmed.includes("Exciting")) {
       const lines = trimmed.split("\n").slice(1);
       const bullets: ParsedBullet[] = [];
@@ -82,10 +88,15 @@ function parseStreamedMarkdown(markdown: string): ParsedSections {
       if (bullets.length > 0) result.frustrating = bullets;
     } else if (trimmed.includes("The Bottom Line") || trimmed.includes("Bottom Line")) {
       const content = trimmed.replace(/^##.*?\n/, "").trim();
-      result.bottomLine = content
+      let cleaned = content
         .replace(/^\*\*|\*\*$/g, "")
-        .replace(/^[\s<"']+|[\s>"']+$/g, "")
+        .replace(/[<>]/g, "")
         .trim();
+
+      if (topic) {
+        cleaned = cleaned.replace(/\b(NAME|TARGET|Target)\b/g, topic);
+      }
+      result.bottomLine = cleaned.trim();
     }
   }
 
@@ -98,8 +109,8 @@ function parseStreamedMarkdown(markdown: string): ParsedSections {
   return result;
 }
 
-export function InsightsCards({ streamedText, isStreaming }: InsightsCardsProps) {
-  const parsed = useMemo(() => parseStreamedMarkdown(streamedText), [streamedText]);
+export function InsightsCards({ streamedText, isStreaming, topic }: InsightsCardsProps) {
+  const parsed = useMemo(() => parseStreamedMarkdown(streamedText, topic), [streamedText, topic]);
 
   // Skeletons during initial streaming
   if (!streamedText && isStreaming) {
@@ -108,133 +119,82 @@ export function InsightsCards({ streamedText, isStreaming }: InsightsCardsProps)
         <div className="md:col-span-2 h-28 rounded-3xl glass-panel opacity-60" />
         <div className="h-44 rounded-3xl glass-panel opacity-60" />
         <div className="h-44 rounded-3xl glass-panel opacity-60" />
-        <div className="md:col-span-2 h-24 rounded-3xl glass-panel opacity-60" />
+        <div className="md:col-span-2 h-20 rounded-3xl glass-panel opacity-60" />
       </section>
     );
   }
 
-  // Fallback raw text
-  if (streamedText && !parsed.isParsed) {
-    return (
-      <section className="rounded-3xl glass-panel p-5 sm:p-7 shadow-xs">
-        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#6c94cc]">
-          <Sparkles className="h-4 w-4" />
-          <span>Quick Summary</span>
-        </div>
-        <div className="mt-3 whitespace-pre-wrap text-sm text-slate-800 leading-relaxed font-medium">
-          {streamedText}
-          {isStreaming && <span className="inline-block animate-pulse text-[#6c94cc]">▍</span>}
-        </div>
-      </section>
-    );
+  if (!parsed.isParsed) {
+    return null;
   }
 
   return (
     <section className="grid gap-3 sm:gap-4 md:grid-cols-2">
-      {/* 1. 10-Second Verdict */}
-      <article className="md:col-span-2 rounded-3xl glass-panel p-5 sm:p-7 border-sky-300/40 shadow-xs relative overflow-hidden">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-sky-500/10 text-sky-600">
-              <Zap className="h-4 w-4" />
-            </div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-sky-800">
-              10-Second Verdict
-            </h3>
+      {/* 10-Second Verdict - Hero VisionOS Glass Capsule */}
+      {parsed.verdict && (
+        <div className="md:col-span-2 rounded-3xl glass-elevated p-5 sm:p-6 shadow-xs border border-white/60">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#6c94cc]">
+            <Zap className="h-4 w-4 text-[#6c94cc]" />
+            <span>10-Second Verdict</span>
           </div>
-          {isStreaming && !parsed.verdict && (
-            <span className="text-xs text-sky-600 animate-pulse font-semibold">Generating...</span>
-          )}
-        </div>
-        {parsed.verdict ? (
-          <p className="mt-3 text-lg sm:text-2xl font-extrabold leading-snug text-slate-900 tracking-tight">
+          <p className="mt-2 text-base sm:text-lg font-extrabold text-slate-900 leading-snug">
             {parsed.verdict}
           </p>
-        ) : (
-          <div className="mt-3 h-8 sm:h-10 rounded-xl bg-white/40 animate-pulse" />
-        )}
-      </article>
-
-      {/* 2. The Exciting */}
-      <article className="rounded-3xl glass-panel p-5 sm:p-6 border-emerald-400/30 shadow-xs">
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
-            <CheckCircle2 className="h-4 w-4" />
-          </div>
-          <h3 className="text-sm font-bold text-emerald-900">
-            The Exciting
-          </h3>
         </div>
-        {parsed.exciting.length > 0 ? (
-          <ul className="mt-4 space-y-3">
-            {parsed.exciting.map((item, idx) => (
-              <li key={idx} className="text-xs sm:text-sm text-slate-800 leading-relaxed">
+      )}
+
+      {/* The Exciting */}
+      {parsed.exciting.length > 0 && (
+        <div className="rounded-3xl glass-panel p-5 sm:p-6 shadow-2xs border border-emerald-500/10">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-700">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+            <span>The Exciting</span>
+          </div>
+          <ul className="mt-3 space-y-2.5">
+            {parsed.exciting.map((item, i) => (
+              <li key={i} className="text-xs sm:text-sm text-slate-700 leading-relaxed">
                 {item.theme && (
-                  <span className="font-bold text-emerald-800 mr-1.5">
-                    [{item.theme}]
-                  </span>
+                  <strong className="font-bold text-emerald-900">[{item.theme}] </strong>
                 )}
-                {item.text}
+                <span>{item.text}</span>
               </li>
             ))}
           </ul>
-        ) : (
-          <div className="mt-4 space-y-2.5 animate-pulse">
-            <div className="h-4 rounded bg-white/50 w-3/4" />
-            <div className="h-4 rounded bg-white/50 w-5/6" />
-          </div>
-        )}
-      </article>
-
-      {/* 3. The Frustrating */}
-      <article className="rounded-3xl glass-panel p-5 sm:p-6 border-rose-400/30 shadow-xs">
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-rose-500/10 text-rose-600">
-            <AlertCircle className="h-4 w-4" />
-          </div>
-          <h3 className="text-sm font-bold text-rose-900">
-            The Frustrating
-          </h3>
         </div>
-        {parsed.frustrating.length > 0 ? (
-          <ul className="mt-4 space-y-3">
-            {parsed.frustrating.map((item, idx) => (
-              <li key={idx} className="text-xs sm:text-sm text-slate-800 leading-relaxed">
+      )}
+
+      {/* The Frustrating */}
+      {parsed.frustrating.length > 0 && (
+        <div className="rounded-3xl glass-panel p-5 sm:p-6 shadow-2xs border border-rose-500/10">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-rose-700">
+            <AlertCircle className="h-4 w-4 text-rose-600" />
+            <span>The Frustrating</span>
+          </div>
+          <ul className="mt-3 space-y-2.5">
+            {parsed.frustrating.map((item, i) => (
+              <li key={i} className="text-xs sm:text-sm text-slate-700 leading-relaxed">
                 {item.theme && (
-                  <span className="font-bold text-rose-800 mr-1.5">
-                    [{item.theme}]
-                  </span>
+                  <strong className="font-bold text-rose-900">[{item.theme}] </strong>
                 )}
-                {item.text}
+                <span>{item.text}</span>
               </li>
             ))}
           </ul>
-        ) : (
-          <div className="mt-4 space-y-2.5 animate-pulse">
-            <div className="h-4 rounded bg-white/50 w-3/4" />
-            <div className="h-4 rounded bg-white/50 w-5/6" />
-          </div>
-        )}
-      </article>
-
-      {/* 4. The Bottom Line */}
-      <article className="md:col-span-2 rounded-3xl glass-panel p-5 sm:p-6 shadow-xs">
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-500/10 text-slate-700">
-            <Compass className="h-4 w-4" />
-          </div>
-          <h3 className="text-sm font-bold text-slate-900">
-            The Bottom Line
-          </h3>
         </div>
-        {parsed.bottomLine ? (
-          <p className="mt-3 text-sm sm:text-base font-semibold text-slate-800 leading-relaxed">
+      )}
+
+      {/* The Bottom Line */}
+      {parsed.bottomLine && (
+        <div className="md:col-span-2 rounded-3xl glass-panel p-5 sm:p-6 shadow-2xs">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-600">
+            <Compass className="h-4 w-4 text-[#6c94cc]" />
+            <span>The Bottom Line</span>
+          </div>
+          <p className="mt-2 text-xs sm:text-sm text-slate-800 font-medium leading-relaxed">
             {parsed.bottomLine}
           </p>
-        ) : (
-          <div className="mt-3 h-6 rounded bg-white/50 animate-pulse w-2/3" />
-        )}
-      </article>
+        </div>
+      )}
     </section>
   );
 }

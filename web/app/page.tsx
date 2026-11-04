@@ -335,6 +335,7 @@ export default function HomePage() {
               <InsightsCards
                 streamedText={insightsStreamText}
                 isStreaming={isStreamingInsights}
+                topic={analyzedData.aspect || analyzedData.topic}
               />
             </div>
 
