@@ -32,12 +32,12 @@ export function cleanTweetText(text: string): string {
 }
 
 /**
- * Sanitize the handle to /^[A-Za-z0-9_]{1,30}$/ before rendering; otherwise show 'unknown'.
+ * Sanitize handle before rendering (supports Twitter @handles & Reddit u/usernames with hyphens)
  */
 export function sanitizeHandle(handle: string | undefined | null): string {
   if (!handle || typeof handle !== "string") return "unknown";
-  const trimmed = handle.replace(/^@/, "").trim();
-  if (/^[A-Za-z0-9_]{1,30}$/.test(trimmed)) {
+  const trimmed = handle.replace(/^[u@]\//, "").replace(/^[@u]/, "").trim();
+  if (/^[A-Za-z0-9_-]{1,40}$/.test(trimmed)) {
     return trimmed;
   }
   return "unknown";
@@ -49,6 +49,9 @@ export function sanitizeHandle(handle: string | undefined | null): string {
  */
 export function sanitizePostgrestFilter(input: string | undefined | null): string {
   if (!input || typeof input !== "string") return "";
-  return input.replace(/[(),.:"\'\\%*]/g, " ").replace(/\s+/g, " ").trim().slice(0, 100);
+  // Strip PostgREST operators & reserved chars: commas, parens, dots, quotes, percent
+  return input
+    .replace(/[(),.:"'\\%]/g, "")
+    .trim()
+    .slice(0, 80);
 }
-

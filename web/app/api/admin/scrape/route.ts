@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
         const preprocessed = allFetched
           .map((t) => {
             const cleaned = cleanTweetText(t.text);
-            const dedupKey = computeDedupKey(cleaned, t.user);
+            const dedupKey = computeDedupKey(cleaned, t.user, t.platform);
             return { raw: t, cleaned, dedupKey };
           })
           .filter((t) => t.cleaned.length > 0);

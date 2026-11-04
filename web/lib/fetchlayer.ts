@@ -25,6 +25,76 @@ export interface FetchLayerSearchOptions {
   platforms?: SocialPlatform[];
 }
 
+const KNOWN_BOT_AUTHORS = new Set([
+  "automoderator",
+  "movies-app",
+  "bot",
+  "remindmebot",
+  "autotldr",
+  "videodownloadnode",
+  "savevideo",
+]);
+
+/**
+ * Normalizes and extracts clean content from a raw Reddit item.
+ * Skips [removed], [deleted], and known bot megathreads.
+ */
+function normalizeRedditItem(item: FetchLayerRawPost): NormalizedScrapedPost | null {
+  const authorName =
+    typeof item.author === "string"
+      ? item.author
+      : item.author?.username || item.author?.name || "reddit_user";
+
+  const cleanAuthor = authorName.replace(/^u\//i, "").trim();
+  const authorLower = cleanAuthor.toLowerCase();
+  if (KNOWN_BOT_AUTHORS.has(authorLower) || authorLower.endsWith("bot") || authorLower.endsWith("_bot")) {
+    return null;
+  }
+
+  // Construct composite text from Reddit title and selftext/body
+  const title = (item.title || "").trim();
+  const rawBody = (item.selftext || item.text || item.body || "").trim();
+  const isValidBody = rawBody && rawBody !== "[removed]" && rawBody !== "[deleted]";
+
+  let text = "";
+  if (title && isValidBody) {
+    text = `${title}: ${rawBody}`;
+  } else if (title) {
+    text = title;
+  } else if (isValidBody) {
+    text = rawBody;
+  }
+
+  if (!text || text.length < 5) return null;
+
+  const id = String(item.id || Math.random().toString(36).substring(2));
+  let time = new Date().toISOString();
+  if (item.created_utc) {
+    time = new Date(item.created_utc * 1000).toISOString();
+  } else if (item.createdAt || item.created_at || item.time) {
+    time = item.createdAt || item.created_at || item.time || time;
+  }
+
+  let subreddit = item.subreddit || item.subreddit_name_prefixed || "";
+  subreddit = subreddit.replace(/^r\//i, "");
+
+  const permalink = item.permalink
+    ? item.permalink.startsWith("http")
+      ? item.permalink
+      : `https://reddit.com${item.permalink}`
+    : item.url;
+
+  return {
+    id: `rd_${id}`,
+    text,
+    time,
+    user: cleanAuthor,
+    platform: "reddit",
+    subreddit: subreddit || undefined,
+    url: permalink || undefined,
+  };
+}
+
 /**
  * Fetches posts from Twitter and Reddit in parallel.
  * Gracefully handles partial failures so if one platform is throttled,
@@ -49,8 +119,8 @@ export async function fetchPostsFromFetchLayer({
 
   const baseUrl = (process.env.FETCHLAYER_BASE_URL || "https://api.fetchlayer.dev").replace(/\/+$/, "");
 
-  // Allocate count evenly across requested platforms
-  const targetPerPlatform = Math.max(5, Math.ceil(count / platforms.length));
+  // Fetch generous batches per platform (up to 50 each) for rich representation
+  const maxTarget = Math.min(Math.max(count, 30), 50);
 
   const fetchTwitter = async (): Promise<{ posts: NormalizedScrapedPost[]; cursor: string | null }> => {
     if (!platforms.includes("twitter")) return { posts: [], cursor: null };
@@ -59,9 +129,9 @@ export async function fetchPostsFromFetchLayer({
       const payload: Record<string, unknown> = {
         query: formattedQuery,
         product: "Top",
-        count: Math.min(targetPerPlatform, 50),
+        count: maxTarget,
       };
-      if (cursor) payload.cursor = cursor;
+      if (cursor && !cursor.startsWith("t3_")) payload.cursor = cursor;
 
       const res = await fetch(`${baseUrl}/twitter/search`, {
         method: "POST",
@@ -115,79 +185,61 @@ export async function fetchPostsFromFetchLayer({
   const fetchReddit = async (): Promise<{ posts: NormalizedScrapedPost[]; cursor: string | null }> => {
     if (!platforms.includes("reddit")) return { posts: [], cursor: null };
     try {
-      const payload: Record<string, unknown> = {
-        query: query.trim(),
-        sort: "relevance",
-        limit: Math.min(targetPerPlatform, 50),
-        count: Math.min(targetPerPlatform, 50),
+      // Execute multi-sort queries in parallel: 'relevance' (contextual matches) + 'top' (highest impact discussions)
+      const fetchSort = async (sortType: "relevance" | "top") => {
+        const payload: Record<string, unknown> = {
+          query: query.trim(),
+          sort: sortType,
+          time: "all",
+          limit: maxTarget,
+          count: maxTarget,
+        };
+        if (cursor && (cursor.startsWith("t3_") || !cursor.includes("="))) {
+          payload.after = cursor;
+          payload.cursor = cursor;
+        }
+
+        const res = await fetch(`${baseUrl}/reddit/search`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token.trim()}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) {
+          console.warn(`FetchLayer Reddit (${sortType}) search status ${res.status}`);
+          return { items: [], cursor: null };
+        }
+
+        const data = (await res.json()) as FetchLayerSearchResponse;
+        const list = data.items || data.posts || data.results || data.data || data.tweets || [];
+        const nextCursor = data.after || data.nextCursor || data.cursor || null;
+        return { items: list, cursor: nextCursor };
       };
-      if (cursor) payload.cursor = cursor;
 
-      const res = await fetch(`${baseUrl}/reddit/search`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token.trim()}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const [relResult, topResult] = await Promise.all([
+        fetchSort("relevance"),
+        fetchSort("top").catch(() => ({ items: [], cursor: null })),
+      ]);
 
-      if (!res.ok) {
-        console.warn(`FetchLayer Reddit search status ${res.status}`);
-        return { posts: [], cursor: null };
-      }
-
-      const data = (await res.json()) as FetchLayerSearchResponse;
-      const rawList = data.items || data.posts || data.results || data.data || data.tweets || [];
+      const seenIds = new Set<string>();
       const normalized: NormalizedScrapedPost[] = [];
 
-      for (const item of rawList) {
-        // Construct composite text from Reddit title and selftext/body
-        let text = "";
-        if (item.title && item.selftext) {
-          text = `${item.title.trim()}: ${item.selftext.trim()}`;
-        } else if (item.title) {
-          text = item.title.trim();
-        } else {
-          text = (item.text || item.body || "").trim();
+      // Combine both relevance and top results, preserving highest relevance first
+      const combinedItems = [...relResult.items, ...topResult.items];
+      for (const item of combinedItems) {
+        const parsed = normalizeRedditItem(item);
+        if (parsed && !seenIds.has(parsed.id)) {
+          seenIds.add(parsed.id);
+          normalized.push(parsed);
         }
-
-        if (!text) continue;
-
-        const id = String(item.id || Math.random().toString(36).substring(2));
-        let time = new Date().toISOString();
-        if (item.created_utc) {
-          time = new Date(item.created_utc * 1000).toISOString();
-        } else if (item.createdAt || item.created_at || item.time) {
-          time = item.createdAt || item.created_at || item.time || time;
-        }
-
-        const authorName =
-          typeof item.author === "string"
-            ? item.author
-            : item.author?.username || item.author?.name || "reddit_user";
-
-        let subreddit = item.subreddit || item.subreddit_name_prefixed || "";
-        subreddit = subreddit.replace(/^r\//i, "");
-
-        const permalink = item.permalink
-          ? (item.permalink.startsWith("http") ? item.permalink : `https://reddit.com${item.permalink}`)
-          : item.url;
-
-        normalized.push({
-          id: `rd_${id}`,
-          text,
-          time,
-          user: authorName.replace(/^u\//i, ""),
-          platform: "reddit",
-          subreddit: subreddit || undefined,
-          url: permalink || undefined,
-        });
       }
 
       return {
         posts: normalized,
-        cursor: data.nextCursor || data.cursor || data.after || null,
+        cursor: relResult.cursor || topResult.cursor || null,
       };
     } catch (err) {
       console.warn("FetchLayer Reddit fetch error:", err);

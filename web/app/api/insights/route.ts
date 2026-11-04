@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sb } from "@/lib/supabase-server";
 import { normalizeTopicKey, sanitizeHandle } from "@/lib/clean";
 import { hfStream } from "@/lib/hf";
-import { computeDynamicWindows, filterTweetsByWindow, calculateWeightedSentiment, RawTweetItem } from "@/lib/analytics";
+import { computeDynamicWindows, filterTweetsByWindow, calculateWeightedSentiment } from "@/lib/analytics";
 import { TimeWindowId, HFSynthReq, SentimentLabel } from "@/lib/types";
 import { checkPublicEndpointRateLimit } from "@/lib/ratelimit";
 
@@ -71,25 +71,50 @@ export async function POST(req: NextRequest) {
     const { filtered } = filterTweetsByWindow(processedRows, chosenWindowId, now);
     const { counts, weighted } = calculateWeightedSentiment(filtered, now);
 
-    const topPos = filtered
-      .filter((t) => t.sentiment === "positive")
-      .sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0) || new Date(b.time).getTime() - new Date(a.time).getTime())
-      .slice(0, 5)
-      .map((t) => ({
-        user: t.handle || "user",
-        text: t.text || "",
-        confidence: Number((t.confidence ?? 0).toFixed(2)),
-      }));
+    const pickDiverse = (items: typeof filtered, maxCount = 5) => {
+      const sorted = [...items].sort(
+        (a, b) => (b.confidence ?? 0) - (a.confidence ?? 0) || new Date(b.time).getTime() - new Date(a.time).getTime()
+      );
+      const picked: Array<{ user: string; text: string; confidence: number }> = [];
+      const seenUsers = new Set<string>();
+      const seenPrefixes = new Set<string>();
 
-    const topNeg = filtered
-      .filter((t) => t.sentiment === "negative")
-      .sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0) || new Date(b.time).getTime() - new Date(a.time).getTime())
-      .slice(0, 5)
-      .map((t) => ({
-        user: t.handle || "user",
-        text: t.text || "",
-        confidence: Number((t.confidence ?? 0).toFixed(2)),
-      }));
+      for (const t of sorted) {
+        if (picked.length >= maxCount) break;
+        const u = (t.handle || "user").toLowerCase();
+        const p = (t.text || "").slice(0, 25).toLowerCase().replace(/[^a-z0-9]/g, "");
+
+        if (seenUsers.has(u)) continue;
+        if (p && seenPrefixes.has(p)) continue;
+
+        seenUsers.add(u);
+        if (p) seenPrefixes.add(p);
+        picked.push({
+          user: t.handle || "user",
+          text: t.text || "",
+          confidence: Number((t.confidence ?? 0).toFixed(2)),
+        });
+      }
+
+      if (picked.length < maxCount) {
+        const pickedTexts = new Set(picked.map((p) => p.text));
+        for (const t of sorted) {
+          if (picked.length >= maxCount) break;
+          if (!pickedTexts.has(t.text || "")) {
+            pickedTexts.add(t.text || "");
+            picked.push({
+              user: t.handle || "user",
+              text: t.text || "",
+              confidence: Number((t.confidence ?? 0).toFixed(2)),
+            });
+          }
+        }
+      }
+      return picked;
+    };
+
+    const topPos = pickDiverse(filtered.filter((t) => t.sentiment === "positive"), 5);
+    const topNeg = pickDiverse(filtered.filter((t) => t.sentiment === "negative"), 5);
 
     const total = filtered.length;
     const pctPos = total > 0 ? (counts.positive / total) * 100 : 0;

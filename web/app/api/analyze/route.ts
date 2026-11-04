@@ -63,18 +63,18 @@ export async function POST(req: NextRequest) {
         });
 
         if (scrapeResult.posts.length > 0) {
-          // Preprocess and compute dedup keys
-          const candidateRows = scrapeResult.posts
-            .map((p) => {
-              const cleaned = cleanTweetText(p.text);
-              const dedupKey = computeDedupKey(cleaned, p.user);
-              return {
-                rawPost: p,
-                cleaned,
-                dedupKey,
-              };
-            })
-            .filter((c) => c.cleaned.length > 0);
+          // Preprocess and compute dedup keys with platform
+          const candidateMap = new Map<string, { rawPost: (typeof scrapeResult.posts)[0]; cleaned: string; dedupKey: string }>();
+          for (const p of scrapeResult.posts) {
+            const cleaned = cleanTweetText(p.text);
+            if (!cleaned) continue;
+            const dedupKey = computeDedupKey(cleaned, p.user, p.platform);
+            // In-batch deduplication: keep first occurrence
+            if (!candidateMap.has(dedupKey)) {
+              candidateMap.set(dedupKey, { rawPost: p, cleaned, dedupKey });
+            }
+          }
+          const candidateRows = Array.from(candidateMap.values());
 
           // Check which keys already exist in DB
           const dedupKeys = candidateRows.map((c) => c.dedupKey);
@@ -485,16 +485,58 @@ export async function POST(req: NextRequest) {
     // 5. Calculate velocity over all historical data
     const velocity = calculateSentimentVelocity(processedRows, now);
 
-    // 6. Select top 5 positive and top 5 negative evidence items
-    const positivePool = (filtered as ProcessedRow[])
-      .filter((t) => t.sentiment === "positive")
-      .sort((a, b) => b.confidence - a.confidence || new Date(b.time).getTime() - new Date(a.time).getTime())
-      .slice(0, 5);
+    // 6. Select top 5 positive and top 5 negative evidence items with author & content diversity
+    const selectDiverseEvidence = (items: ProcessedRow[], maxCount = 5): ProcessedRow[] => {
+      const sorted = [...items].sort(
+        (a, b) => b.confidence - a.confidence || new Date(b.time).getTime() - new Date(a.time).getTime()
+      );
 
-    const negativePool = (filtered as ProcessedRow[])
-      .filter((t) => t.sentiment === "negative")
-      .sort((a, b) => b.confidence - a.confidence || new Date(b.time).getTime() - new Date(a.time).getTime())
-      .slice(0, 5);
+      const selected: ProcessedRow[] = [];
+      const seenAuthors = new Set<string>();
+      const seenPrefixes = new Set<string>();
+
+      // Pass 1: Select diverse authors & distinct texts
+      for (const item of sorted) {
+        if (selected.length >= maxCount) break;
+
+        const authorKey = `${item.platform}:${(item.handle || "unknown").toLowerCase()}`;
+        const prefix = item.text.slice(0, 28).toLowerCase().replace(/[^a-z0-9]/g, "");
+
+        // Author diversity: avoid showing the same author multiple times in top cards
+        if (seenAuthors.has(authorKey)) continue;
+
+        // Content diversity: avoid showing near-identical titles / recurring countdowns
+        if (prefix && seenPrefixes.has(prefix)) continue;
+
+        seenAuthors.add(authorKey);
+        if (prefix) seenPrefixes.add(prefix);
+        selected.push(item);
+      }
+
+      // Pass 2: If we still have fewer than maxCount, fill with remaining items
+      if (selected.length < maxCount) {
+        const selectedIds = new Set(selected.map((s) => s.text));
+        for (const item of sorted) {
+          if (selected.length >= maxCount) break;
+          if (!selectedIds.has(item.text)) {
+            selected.push(item);
+            selectedIds.add(item.text);
+          }
+        }
+      }
+
+      return selected;
+    };
+
+    const positivePool = selectDiverseEvidence(
+      (filtered as ProcessedRow[]).filter((t) => t.sentiment === "positive"),
+      5
+    );
+
+    const negativePool = selectDiverseEvidence(
+      (filtered as ProcessedRow[]).filter((t) => t.sentiment === "negative"),
+      5
+    );
 
     const formatEvidence = (items: ProcessedRow[]): Evidence[] =>
       items.map((i) => ({
