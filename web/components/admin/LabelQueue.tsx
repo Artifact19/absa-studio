@@ -144,7 +144,13 @@ export function LabelQueue({ onLabelSubmitted }: LabelQueueProps = {}) {
       if (["INPUT", "TEXTAREA"].includes((e.target as HTMLElement)?.tagName)) return;
 
       if (revealedResult) {
-        if (e.key === "Enter" || e.key === " " || e.key === "ArrowRight") {
+        if (
+          e.key === "Enter" ||
+          e.key === " " ||
+          e.key === "ArrowRight" ||
+          e.key === "n" ||
+          e.key === "N"
+        ) {
           e.preventDefault();
           handleNext();
         }
@@ -336,8 +342,11 @@ export function LabelQueue({ onLabelSubmitted }: LabelQueueProps = {}) {
 
                   <button
                     onClick={handleNext}
-                    className="flex items-center gap-1 rounded-full bg-slate-900 text-white px-4 py-1.5 text-xs font-semibold hover:bg-slate-800 transition shadow cursor-pointer"
+                    className="flex items-center gap-1.5 rounded-full bg-slate-900 text-white px-4 py-1.5 text-xs font-semibold hover:bg-slate-800 transition shadow cursor-pointer active:scale-95"
                   >
+                    <kbd className="px-1.5 py-0.5 rounded bg-slate-700 text-[10px] font-mono text-slate-200">
+                      Space / ↵
+                    </kbd>
                     <span>Next Post</span>
                     <ChevronRight className="h-3.5 w-3.5" />
                   </button>
