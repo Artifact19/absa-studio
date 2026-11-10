@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sb } from "@/lib/supabase-server";
-import { isRequestAuthorized, verifyCsrfOrigin } from "@/lib/auth";
+import { isRequestAuthorized, verifyCsrfOrigin, verifyAdminPasskey } from "@/lib/auth";
 import { normalizeTopicKey } from "@/lib/clean";
 
 export async function DELETE(
@@ -13,6 +13,15 @@ export async function DELETE(
 
   if (!verifyCsrfOrigin(req)) {
     return NextResponse.json({ error: "CSRF verification failed" }, { status: 403 });
+  }
+
+  // Strict Security Requirement: Purge operations require explicit Admin Passkey verification
+  const purgeKey = req.headers.get("x-purge-passkey") || req.headers.get("x-admin-key");
+  if (!purgeKey || !verifyAdminPasskey(purgeKey)) {
+    return NextResponse.json(
+      { error: "Strict passkey verification failed. Purge operations require x-purge-passkey or x-admin-key." },
+      { status: 403 }
+    );
   }
 
   try {
