@@ -586,15 +586,16 @@ export default function AnnotatePage() {
             {revealedResult ? (
               /* Animated Model Comparison Reveal Drawer */
               <div className="liquid-glass-inner rounded-[28px] p-6 space-y-5 animate-liquid-reveal border border-white/90 bg-white/70">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                  {/* Human vs Model Label Pills */}
-                  <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                        Human Truth:
+                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                  {/* Comparison Duel: Human Truth VS Qwen 2.5 */}
+                  <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+                    {/* Human Truth Capsule */}
+                    <div className="inline-flex items-center gap-2 rounded-full bg-white/70 border border-white/90 pl-3.5 pr-1 py-1 shadow-xs">
+                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                        Human Truth
                       </span>
                       <span
-                        className={`text-xs font-extrabold px-3.5 py-1 rounded-full uppercase shadow-xs ${
+                        className={`text-xs font-extrabold px-3 py-1 rounded-full uppercase shadow-xs ${
                           revealedResult.humanLabel === "positive"
                             ? "liquid-pill-emerald"
                             : revealedResult.humanLabel === "negative"
@@ -606,14 +607,18 @@ export default function AnnotatePage() {
                       </span>
                     </div>
 
-                    <span className="text-slate-400 font-bold text-xs">vs</span>
+                    {/* Centered VS Badge */}
+                    <span className="px-2.5 py-0.5 rounded-full bg-slate-200/90 border border-slate-300/50 text-[10px] font-black text-slate-700 tracking-wider shadow-2xs">
+                      VS
+                    </span>
 
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                        Qwen 2.5:
+                    {/* Qwen 2.5 Capsule with explicit Confidence metric */}
+                    <div className="inline-flex items-center gap-2 rounded-full bg-white/70 border border-white/90 pl-3.5 pr-2 py-1 shadow-xs">
+                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                        Qwen 2.5
                       </span>
                       <span
-                        className={`text-xs font-extrabold px-3.5 py-1 rounded-full uppercase shadow-xs ${
+                        className={`text-xs font-extrabold px-3 py-1 rounded-full uppercase shadow-xs ${
                           revealedResult.modelLabel === "positive"
                             ? "liquid-pill-emerald"
                             : revealedResult.modelLabel === "negative"
@@ -623,14 +628,14 @@ export default function AnnotatePage() {
                       >
                         {revealedResult.modelLabel}
                       </span>
-                      <span className="font-mono text-xs text-slate-400 font-semibold">
-                        ({(revealedResult.confidence * 100).toFixed(0)}%)
+                      <span className="text-[11px] font-semibold text-slate-600 bg-slate-100/90 border border-slate-200/80 px-2 py-0.5 rounded-full tabular-nums">
+                        {(revealedResult.confidence * 100).toFixed(0)}% confidence
                       </span>
                     </div>
                   </div>
 
                   {/* Agreement Indicator & Next Post Button */}
-                  <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3 shrink-0">
                     <span
                       className={`inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-full ${
                         revealedResult.matched
@@ -651,7 +656,7 @@ export default function AnnotatePage() {
                       )}
                     </span>
 
-                    {/* Next Post Button (Primary Violet Liquid Gel Pill - Fixed Overflow) */}
+                    {/* Next Post Button */}
                     <button
                       type="button"
                       onClick={handleNext}
