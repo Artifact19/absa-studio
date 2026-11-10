@@ -517,17 +517,17 @@ export default function AnnotatePage() {
             }`}
           >
             {/* Top Specular Pill Row */}
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/60 pb-5">
-              <div className="flex items-center gap-2.5">
-                {/* Target Entity Pill (Neon Violet / Cyan Glass Accent) */}
-                <span className="liquid-pill-cyan px-4 py-1 text-xs font-bold tracking-wide shadow-sm flex items-center gap-1.5">
-                  <Tag className="h-3.5 w-3.5" />
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/60 pb-6">
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Target Entity Pill (Enlarged Liquid Cyan Glass Badge) */}
+                <span className="liquid-pill-cyan px-5 py-2 text-sm sm:text-base font-extrabold tracking-wide shadow-md flex items-center gap-2">
+                  <Tag className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
                   <span>{currentItem.aspect}</span>
                 </span>
 
-                {/* Social Platform Pill */}
-                <span className="liquid-pill-neutral px-3 py-1 text-xs font-semibold flex items-center gap-1.5 text-slate-700">
-                  <PlatformIcon platform={currentItem.platform || "twitter"} className="h-3.5 w-3.5" />
+                {/* Social Platform Pill (Enlarged Liquid Neutral Glass Badge) */}
+                <span className="liquid-pill-neutral px-4 py-2 text-sm sm:text-base font-bold flex items-center gap-2 text-slate-800 shadow-sm">
+                  <PlatformIcon platform={currentItem.platform || "twitter"} className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
                   <span>
                     {currentItem.platform === "reddit"
                       ? currentItem.subreddit
@@ -539,12 +539,12 @@ export default function AnnotatePage() {
               </div>
 
               {/* Author & Batch Counter */}
-              <div className="flex items-center gap-3 text-xs">
+              <div className="flex items-center gap-3 text-xs sm:text-sm">
                 <span className="text-slate-500 font-medium">
                   {currentItem.platform === "reddit" ? `u/${currentItem.user}` : `@${currentItem.user}`}
                 </span>
                 <span className="text-slate-300">•</span>
-                <span className="font-mono text-slate-400 text-[11px] font-semibold bg-white/50 px-2.5 py-0.5 rounded-full border border-white/70">
+                <span className="font-mono text-slate-500 text-xs font-bold bg-white/60 px-3 py-1 rounded-full border border-white/80 shadow-xs">
                   Card {currentIndex + 1} of {items.length}
                 </span>
               </div>
@@ -586,15 +586,15 @@ export default function AnnotatePage() {
             {revealedResult ? (
               /* Animated Model Comparison Reveal Drawer */
               <div className="liquid-glass-inner rounded-[28px] p-6 space-y-5 animate-liquid-reveal border border-white/90 bg-white/70">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   {/* Human vs Model Label Pills */}
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                         Human Truth:
                       </span>
                       <span
-                        className={`text-xs font-bold px-3 py-1 rounded-full uppercase ${
+                        className={`text-xs font-extrabold px-3.5 py-1 rounded-full uppercase shadow-xs ${
                           revealedResult.humanLabel === "positive"
                             ? "liquid-pill-emerald"
                             : revealedResult.humanLabel === "negative"
@@ -609,11 +609,11 @@ export default function AnnotatePage() {
                     <span className="text-slate-400 font-bold text-xs">vs</span>
 
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                         Qwen 2.5:
                       </span>
                       <span
-                        className={`text-xs font-bold px-3 py-1 rounded-full uppercase ${
+                        className={`text-xs font-extrabold px-3.5 py-1 rounded-full uppercase shadow-xs ${
                           revealedResult.modelLabel === "positive"
                             ? "liquid-pill-emerald"
                             : revealedResult.modelLabel === "negative"
@@ -623,16 +623,16 @@ export default function AnnotatePage() {
                       >
                         {revealedResult.modelLabel}
                       </span>
-                      <span className="font-mono text-xs text-slate-400">
+                      <span className="font-mono text-xs text-slate-400 font-semibold">
                         ({(revealedResult.confidence * 100).toFixed(0)}%)
                       </span>
                     </div>
                   </div>
 
                   {/* Agreement Indicator & Next Post Button */}
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     <span
-                      className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full ${
+                      className={`inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-full ${
                         revealedResult.matched
                           ? "bg-emerald-500/15 text-emerald-800 border border-emerald-500/30"
                           : "bg-amber-500/15 text-amber-800 border border-amber-500/30"
@@ -651,18 +651,18 @@ export default function AnnotatePage() {
                       )}
                     </span>
 
-                    {/* Next Post Button (Primary Violet Liquid Gel Pill) */}
+                    {/* Next Post Button (Primary Violet Liquid Gel Pill - Fixed Overflow) */}
                     <button
                       type="button"
                       onClick={handleNext}
-                      className="liquid-pill-primary px-5 py-2 text-xs font-bold flex items-center gap-2 cursor-pointer shadow-lg active:scale-95"
+                      className="liquid-pill-primary px-5 py-2.5 text-xs sm:text-sm font-bold flex items-center gap-2.5 whitespace-nowrap shrink-0 cursor-pointer shadow-lg active:scale-95"
                       autoFocus
                     >
-                      <kbd className="px-1.5 py-0.5 rounded bg-white/25 text-[10px] font-mono text-white">
-                        Space / ↵
+                      <kbd className="px-2 py-0.5 rounded-full bg-white/25 text-[10px] font-mono text-white font-semibold whitespace-nowrap">
+                        Space
                       </kbd>
-                      <span>Next Post</span>
-                      <ChevronRight className="h-4 w-4" />
+                      <span className="whitespace-nowrap">Next Post</span>
+                      <ChevronRight className="h-4 w-4 shrink-0" />
                     </button>
                   </div>
                 </div>
