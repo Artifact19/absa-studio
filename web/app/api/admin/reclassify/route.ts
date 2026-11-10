@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
                 qwen_prob_neg: item.prob_neg,
                 qwen_prob_neu: item.prob_neu,
                 rationale: item.rationale || null,
+                model_route: item.route || null,
               });
 
             if (row.dedup_key) {

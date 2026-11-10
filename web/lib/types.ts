@@ -145,6 +145,8 @@ export interface HFClassifyItem {
   prob_neu: number;
   confidence: number;
   rationale?: string;
+  route?: string;
+  cues?: string[];
 }
 
 export interface HFClassifyResp {

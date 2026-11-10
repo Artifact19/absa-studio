@@ -8,17 +8,12 @@ and re-analysis cost nothing.
 
 Step 2 (offline): replay every system from the cache. Calibration and gate thresholds are
 fitted with stratified K-fold cross-validation, nested so the reported numbers for tuned
-systems are out-of-fold. Reports accuracy, Cohen's kappa (unweighted and linear), per-class
-recall, macro-F1, exact McNemar tests and paired-bootstrap intervals against Approach A.
+systems are out-of-fold. Reports accuracy, Cohen's kappa (unweighted, linear, and quadratic),
+per-class recall, macro-F1, exact McNemar tests and paired-bootstrap intervals against Approach A.
 
 Data: CSV/TSV/JSON/JSONL with a text column (cleaned_text|text|tweet|post), a target column
 (target|aspect|entity, or pass --target) and a label column (label|gold|gt|ground_truth|
 human_label) holding positive/negative/neutral.
-
-Examples:
-  python benchmark.py --data bench.csv --backend remote --url https://<space>.hf.space --key <API_SECRET>
-  python benchmark.py --data bench.csv --quant 4bit           # local GPU with <8 GB VRAM
-  python benchmark.py --data bench.csv --skip-run --write-config pipeline_config.json
 """
 
 from __future__ import annotations
@@ -50,6 +45,7 @@ LAB_IDX = {label: i for i, label in enumerate(ap.LABELS)}  # pipeline order: pos
 TEXT_COLS = ("cleaned_text", "text", "tweet", "post", "content", "body")
 TARGET_COLS = ("target", "aspect", "entity")
 LABEL_COLS = ("label", "gold", "gt", "ground_truth", "human_label", "annotation", "true_label")
+REF_COLS = ("qwen2.5-3b-instruct_sentiment", "reference", "ref", "stored_prediction")
 LABEL_ALIASES = {
     "positive": "positive", "pos": "positive",
     "negative": "negative", "neg": "negative",
@@ -57,29 +53,30 @@ LABEL_ALIASES = {
 }
 
 SYSTEMS = {
+    "ref": "A (stored production predictions)",
     "A": "A: v1 logit verbalizer (pre-CoT production)",
     "B": "B: legacy CoT, 45 tokens, old parser (current production)",
     "B96": "B': legacy CoT, 96 tokens, strict parser",
     "cot_v2": "New CoT prompt alone, verdict from logits",
-    "s1_v2_zero": "Stage 1: new prompt, no anchors",
-    "s1_v2": "Stage 1: new prompt + anchors",
-    "s1_v2_zero_cal": "Stage 1: new prompt, no anchors + calibration (CV)",
-    "s1_v2_cal": "Stage 1: new prompt + anchors + calibration (CV)",
-    "hybrid_default": "Hybrid, untuned defaults",
+    "cot_sc": "New CoT with self-consistency",
+    "s1_v1_cal": "Stage 1: v1 + calibration (CV)",
+    "s1_v1_null_cal": "Stage 1: v1 + null calibration (CV)",
+    "s1_v2_zero_cal": "Stage 1: v2_zero + calibration (CV)",
+    "s1_v2_zero_null_cal": "Stage 1: v2_zero + null calibration (CV)",
+    "s1_v2_cal": "Stage 1: v2 + calibration (CV)",
+    "s1_two_step_cal": "Stage 1: two_step + calibration (CV)",
+    "s1_ensemble_cal": "Stage 1: ensemble(v1+v2_zero) + calibration (CV)",
+    "shipped": "Shipped config (pipeline_config.json)",
     "hybrid_cv": "Hybrid, tuned (nested CV)",
 }
 
-# Searched per stage-1 variant (calibration is refitted for each variant). The first value of
-# each list is the shipped default, so ties resolve to it. gate_margin 1.01 = send every post
-# that is not a guarded neutral to CoT; cot_weight 0 never appears because margin 0 + no cues
-# already means "stage 1 only".
-VARIANT_ORDER = ("v2", "v2_zero", "v1")
+# Grid for candidate tuning
 GRID = {
-    "gate_margin": [0.25, 0.0, 0.15, 0.35, 0.5, 1.01],
-    "gate_cues": ["all", "none"],
-    "neutral_guard": [0.5, 0.4, 0.6, 0.75, 1.01],
-    "cot_weight": [0.5, 0.35, 0.65, 0.85],
-    "cot_can_neutralize": [True, False],
+    "gate_margin": [0.0, 0.15, 0.3, 1.01],
+    "gate_cues": ["none", "all"],
+    "neutral_guard": [0.5, 0.6, 1.01],
+    "cot_weight": [0.35, 0.5, 0.85],
+    "cot_can_neutralize": [False, True],
 }
 TO_ORD = np.array([ORD[label] for label in ap.LABELS])  # pipeline index -> ordinal index
 
@@ -121,14 +118,33 @@ def load_rows(args) -> List[dict]:
     if not records:
         sys.exit(f"{args.data}: no rows")
     cols = list(records[0].keys())
+
+    # Optional filter: --where col=val
+    if getattr(args, "where", None):
+        if "=" not in args.where:
+            sys.exit(f"--where must be in format col=val, got: {args.where!r}")
+        w_col, w_val = args.where.split("=", 1)
+        w_col_match = _pick(cols, w_col, [w_col], "where")
+        if not w_col_match:
+            sys.exit(f"--where column {w_col!r} not found in columns: {sorted(cols)}")
+        records = [r for r in records if str(r.get(w_col_match, "")).strip().lower() == w_val.strip().lower()]
+        print(f"Filtered by {w_col_match}={w_val}: {len(records)} rows remaining")
+
     tcol = _pick(cols, args.text_col, TEXT_COLS, "text")
     gcol = _pick(cols, args.target_col, TARGET_COLS, "target")
     lcol = _pick(cols, args.label_col, LABEL_COLS, "label")
+    rcol = _pick(cols, getattr(args, "reference_col", None), REF_COLS, "reference")
     if not tcol or not lcol:
         sys.exit(f"Could not find text/label columns in {sorted(cols)}; use --text-col/--label-col")
+
     rows, bad = [], Counter()
+    skipped_no_label = 0
     for i, rec in enumerate(records):
-        gold = LABEL_ALIASES.get(str(rec.get(lcol, "")).strip().lower())
+        raw_val = str(rec.get(lcol, "") or "").strip()
+        if not raw_val or raw_val.lower() in ("nan", "none", "null", ""):
+            skipped_no_label += 1
+            continue
+        gold = LABEL_ALIASES.get(raw_val.lower())
         if gold is None:
             bad[str(rec.get(lcol))] += 1
             continue
@@ -136,13 +152,19 @@ def load_rows(args) -> List[dict]:
         if not target:
             sys.exit(f"Row {i} has no target; add a target column or pass --target")
         text = str(rec.get(tcol) or "")
+        ref = None
+        if rcol and rec.get(rcol):
+            ref = LABEL_ALIASES.get(str(rec.get(rcol)).strip().lower())
         rows.append({
             "row": i,
             "id": rec.get("id", i),
             "target": target,
             "text": text if args.no_clean else clean_post(text),
             "gold": gold,
+            "ref": ref,
         })
+    if skipped_no_label:
+        print(f"Skipped {skipped_no_label} rows with no label")
     if bad:
         sys.exit(f"Unrecognised labels {dict(bad)}; expected positive/negative/neutral")
     if args.limit:
@@ -155,7 +177,7 @@ def load_rows(args) -> List[dict]:
 # --------------------------------------------------------------------------------------
 
 class LocalBackend:
-    def __init__(self, model_id: str, quant: str):
+    def __init__(self, model_id: str, quant: str, self_consistency: int = 0):
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -180,22 +202,28 @@ class LocalBackend:
         self.engine = ap.AbsaEngine(model, tok)
         self.cfg = ap.PipelineConfig()
         self.ident = f"local-{model_id.split('/')[-1]}-{quant}"
+        self.self_consistency = self_consistency
 
     def __call__(self, texts: List[str], target: str) -> List[dict]:
-        return self.engine.raw_scores(texts, target, self.cfg)
+        return self.engine.raw_scores(texts, target, self.cfg, self_consistency=self.self_consistency)
 
 
 class RemoteBackend:
-    def __init__(self, url: str, key: str, timeout: int = 600):
+    def __init__(self, url: str, key: str, timeout: int = 600, self_consistency: int = 0):
         self.url = url.rstrip("/") + "/eval/raw-scores"
         self.key = key
         self.timeout = timeout
+        self.self_consistency = self_consistency
         host = re.sub(r"^https?://", "", url).split("/")[0]
         self.ident = "remote-" + re.sub(r"[^A-Za-z0-9.-]", "_", host)
         self._warned = False
 
     def __call__(self, texts: List[str], target: str) -> List[dict]:
-        body = json.dumps({"texts": texts, "target": target}).encode()
+        body = json.dumps({
+            "texts": texts,
+            "target": target,
+            "self_consistency": self.self_consistency,
+        }).encode()
         delay = 5.0
         for attempt in range(5):
             req = urllib.request.Request(self.url, data=body, method="POST", headers={
@@ -273,10 +301,16 @@ def confusion(g: np.ndarray, p: np.ndarray) -> np.ndarray:
     return np.bincount(g * 3 + p, minlength=9).reshape(3, 3)
 
 
-def kappa_cm(cm: np.ndarray, linear: bool) -> float:
+def kappa_cm(cm: np.ndarray, weights: str = "none") -> float:
     n = cm.sum()
     i, j = np.indices(cm.shape)
-    d = np.abs(i - j) / (cm.shape[0] - 1) if linear else (i != j).astype(float)
+    k = cm.shape[0] - 1
+    if weights == "linear":
+        d = np.abs(i - j) / k
+    elif weights == "quadratic":
+        d = ((i - j) / k) ** 2
+    else:
+        d = (i != j).astype(float)
     expected = np.outer(cm.sum(1), cm.sum(0)) / n
     denom = (d * expected).sum()
     return float(1 - (d * cm).sum() / denom) if denom > 0 else float("nan")
@@ -295,8 +329,9 @@ def metrics(gold: Sequence[str], pred: Sequence[str]) -> dict:
         "n": int(cm.sum()),
         "correct": int(np.trace(cm)),
         "accuracy": float(np.trace(cm) / cm.sum()),
-        "kappa": kappa_cm(cm, False),
-        "kappa_w": kappa_cm(cm, True),
+        "kappa": kappa_cm(cm, "none"),
+        "kappa_w": kappa_cm(cm, "linear"),
+        "kappa_qw": kappa_cm(cm, "quadratic"),
         "macro_f1": float(np.mean(f1)),
         "recall": recall,
         "precision": precision,
@@ -323,7 +358,7 @@ def bootstrap(gold, preds: Dict[str, List[str]], baseline: str, n_boot: int, see
     for b in range(n_boot):
         s = rng.integers(0, len(g), len(g))
         for k in preds:
-            kw[k][b] = kappa_cm(confusion(g[s], P[k][s]), True)
+            kw[k][b] = kappa_cm(confusion(g[s], P[k][s]), "linear")
     out = {}
     for k in preds:
         delta = kw[k] - kw[baseline]
@@ -387,8 +422,20 @@ def fit_calibration(S: np.ndarray, y: np.ndarray, l2: float = 1.0, iters: int = 
 
 
 # --------------------------------------------------------------------------------------
-# Replay
+# Bench and Replay
 # --------------------------------------------------------------------------------------
+
+CANDIDATES = [
+    # (cand_name, variant, null_cal, members, extra_passes)
+    ("v1", "v1", False, None, 0),
+    ("v1_null", "v1", True, None, 0),
+    ("v2_zero", "v2_zero", False, None, 0),
+    ("v2_zero_null", "v2_zero", True, None, 0),
+    ("v2", "v2", False, None, 0),
+    ("two_step", "two_step", False, None, 1),
+    ("ensemble", "ensemble", False, ["v1", "v2_zero"], 1),
+]
+
 
 @dataclasses.dataclass
 class Bench:
@@ -396,28 +443,74 @@ class Bench:
     gold: List[str]
     y: np.ndarray            # pipeline label index (pos, neg, neu)
     S1: Dict[str, np.ndarray]
+    S1_member_labels: Dict[str, Optional[List[List[str]]]]
     cot: np.ndarray
     cot_status: List[str]
+    cot_samples: Optional[List[Optional[List[dict]]]]
     cues: List[List[str]]
     legacy45: List[Optional[str]]
     legacy_full: List[Optional[str]]
     clipped: int
+    ref: Optional[List[str]] = None
 
 
 def build_bench(rows: List[dict], cache: Dict[str, dict]) -> Bench:
     raws = [cache[row_key(r)] for r in rows]
     leg = [r.get("legacy_cot") or {} for r in raws]
+
+    # Build supported S1 candidates
+    S1: Dict[str, np.ndarray] = {}
+    S1_member_labels: Dict[str, Optional[List[List[str]]]] = {}
+
+    for cand_name, variant, null_cal, members, _ in CANDIDATES:
+        # Check if cache supports this candidate
+        if null_cal and any("stage1_null" not in r or not r["stage1_null"] for r in raws):
+            continue
+        if variant == "two_step" and any("two_step" not in r.get("stage1", {}) for r in raws):
+            continue
+        if variant == "ensemble":
+            req_members = members or ["v1", "v2_zero"]
+            if any(any(m not in r.get("stage1", {}) for m in req_members) for r in raws):
+                continue
+        elif variant not in ("ensemble", "two_step"):
+            if any(variant not in r.get("stage1", {}) for r in raws):
+                continue
+
+        cfg = ap.PipelineConfig(
+            stage1_variant=variant,
+            null_calibration=null_cal,
+            ensemble_members=members or ["v1", "v2_zero"],
+        )
+        scores_list = []
+        labels_list = []
+        for r in raws:
+            null_d = r.get("stage1_null") if null_cal else None
+            s, m_lab = ap.stage1_vector(r["stage1"], null_d, cfg)
+            scores_list.append(s)
+            labels_list.append(m_lab)
+        S1[cand_name] = np.array(scores_list, dtype=float)
+        S1_member_labels[cand_name] = labels_list if any(m is not None for m in labels_list) else None
+
+    # Handle cot_samples if present
+    cot_samples_list = [r.get("cot_samples") for r in raws]
+    has_sc = any(cs is not None for cs in cot_samples_list)
+
+    ref_list = [r.get("ref") for r in rows]
+
     return Bench(
         rows=rows,
         gold=[r["gold"] for r in rows],
         y=np.array([LAB_IDX[r["gold"]] for r in rows]),
-        S1={v: np.array([r["stage1"][v] for r in raws], dtype=float) for v in ap.STAGE1_VARIANTS},
+        S1=S1,
+        S1_member_labels=S1_member_labels,
         cot=np.array([r["cot"]["scores"] for r in raws], dtype=float),
         cot_status=[r["cot"]["status"] for r in raws],
+        cot_samples=cot_samples_list if has_sc else None,
         cues=[r["cues"] for r in raws],
         legacy45=[l.get("text_legacy") for l in leg],
         legacy_full=[l.get("text_full") for l in leg],
         clipped=sum(1 for r in raws if r.get("clipped")),
+        ref=ref_list if any(x is not None for x in ref_list) else None,
     )
 
 
@@ -425,11 +518,14 @@ def argmax_labels(S: np.ndarray) -> List[str]:
     return [ap.LABELS[int(i)] for i in S.argmax(axis=1)]
 
 
-def replay(bench: Bench, idx: Sequence[int], cfg: ap.PipelineConfig) -> Tuple[List[str], List[str]]:
+def replay(bench: Bench, idx: Sequence[int], cfg: ap.PipelineConfig, cand_key: Optional[str] = None) -> Tuple[List[str], List[str]]:
     """Reference replay through the production decision code (absa_pipeline.decide)."""
+    key = cand_key or cfg.stage1_variant
     labels, routes = [], []
+    m_labels_list = bench.S1_member_labels.get(key)
     for i in idx:
-        d = ap.decide(bench.S1[cfg.stage1_variant][i], bench.cues[i], cfg, bench.cot[i])
+        m_lab = m_labels_list[i] if m_labels_list is not None else None
+        d = ap.decide(bench.S1[key][i], bench.cues[i], cfg, bench.cot[i], member_labels=m_lab)
         labels.append(d["label"])
         routes.append(d["route"])
     return labels, routes
@@ -445,13 +541,23 @@ def _bias_vec(bias: Dict[str, float]) -> np.ndarray:
     return np.array([bias[k] for k in ap.LABELS])
 
 
-def fast_replay(P1: np.ndarray, PC: np.ndarray, has_cue: np.ndarray, cfg: ap.PipelineConfig) -> Tuple[np.ndarray, np.ndarray]:
+def fast_replay(
+    P1: np.ndarray,
+    PC: np.ndarray,
+    has_cue: np.ndarray,
+    disagree: np.ndarray,
+    cfg: ap.PipelineConfig,
+) -> Tuple[np.ndarray, np.ndarray]:
     """Vectorised twin of absa_pipeline.decide for the grid search: (label index, gated)."""
     l1, lc = P1.argmax(axis=1), PC.argmax(axis=1)
     top = np.sort(P1, axis=1)
     margin = top[:, -1] - top[:, -2]
     guarded = (l1 == ap.NEU) & (P1[:, ap.NEU] >= cfg.neutral_guard)
-    gated = ~guarded & (cfg.cot_weight > 0) & ((margin < cfg.gate_margin) | ((l1 != ap.NEU) & has_cue))
+    gated = ~guarded & (cfg.cot_weight > 0) & (
+        (margin < cfg.gate_margin)
+        | ((l1 != ap.NEU) & has_cue)
+        | (cfg.gate_on_disagreement & disagree)
+    )
     blocked = (l1 != ap.NEU) & (lc == ap.NEU) & (not cfg.cot_can_neutralize)
     w = min(max(cfg.cot_weight, 0.0), 1.0)
     mixed = ((1 - w) * np.log(np.maximum(P1, 1e-9)) + w * np.log(np.maximum(PC, 1e-9))).argmax(axis=1)
@@ -461,7 +567,7 @@ def fast_replay(P1: np.ndarray, PC: np.ndarray, has_cue: np.ndarray, cfg: ap.Pip
 def _fast_score(gold_ord: np.ndarray, labels: np.ndarray, select: str) -> float:
     cm = confusion(gold_ord, TO_ORD[labels])
     if select == "kappa_w":
-        return kappa_cm(cm, True)
+        return kappa_cm(cm, "linear")
     if select == "accuracy":
         return float(np.trace(cm) / cm.sum())
     f1 = []
@@ -473,26 +579,63 @@ def _fast_score(gold_ord: np.ndarray, labels: np.ndarray, select: str) -> float:
     return float(np.mean(f1))
 
 
-def calibrated_config(bench: Bench, idx: np.ndarray, variant: str = "v2") -> ap.PipelineConfig:
-    cfg = ap.PipelineConfig(stage1_variant=variant)
-    cfg.scale, cfg.bias = fit_calibration(bench.S1[variant][idx], bench.y[idx])
+def calibrated_config(bench: Bench, idx: np.ndarray, cand_key: str) -> ap.PipelineConfig:
+    # Look up variant info
+    cand_info = next((c for c in CANDIDATES if c[0] == cand_key), None)
+    variant = cand_info[1] if cand_info else cand_key
+    null_cal = cand_info[2] if cand_info else False
+    members = cand_info[3] if cand_info else ["v1", "v2_zero"]
+
+    cfg = ap.PipelineConfig(
+        stage1_variant=variant,
+        null_calibration=null_cal,
+        ensemble_members=members or ["v1", "v2_zero"],
+    )
+    cfg.scale, cfg.bias = fit_calibration(bench.S1[cand_key][idx], bench.y[idx])
     cfg.cot_scale, cfg.cot_bias = fit_calibration(bench.cot[idx], bench.y[idx])
     return cfg
 
 
-def _arrays(bench: Bench, idx: np.ndarray, cfg: ap.PipelineConfig):
-    P1 = _softmax_rows(cfg.scale * bench.S1[cfg.stage1_variant][idx] + _bias_vec(cfg.bias))
-    PC = _softmax_rows(cfg.cot_scale * bench.cot[idx] + _bias_vec(cfg.cot_bias))
+def _arrays(bench: Bench, idx: np.ndarray, cand_key: str, cfg: ap.PipelineConfig, cot_source: str = "greedy"):
+    P1 = _softmax_rows(cfg.scale * bench.S1[cand_key][idx] + _bias_vec(cfg.bias))
+    if cot_source == "samples" and bench.cot_samples is not None:
+        # Average over chains
+        pc_rows = []
+        for i in idx:
+            chains = bench.cot_samples[i]
+            if chains:
+                c_scores = np.array([c["scores"] for c in chains])
+                p_chains = _softmax_rows(cfg.cot_scale * c_scores + _bias_vec(cfg.cot_bias))
+                pc_rows.append(p_chains.mean(axis=0))
+            else:
+                pc_rows.append(_softmax_rows(cfg.cot_scale * bench.cot[i : i + 1] + _bias_vec(cfg.cot_bias))[0])
+        PC = np.array(pc_rows)
+    else:
+        PC = _softmax_rows(cfg.cot_scale * bench.cot[idx] + _bias_vec(cfg.cot_bias))
+
     has_cue = np.array([any(c in cfg.gate_cues for c in bench.cues[i]) for i in idx], dtype=bool)
-    return P1, PC, has_cue
+
+    m_labels = bench.S1_member_labels.get(cand_key)
+    if m_labels is not None:
+        disagree = np.array([len(set(m_labels[i])) > 1 for i in idx], dtype=bool)
+    else:
+        disagree = np.zeros(len(idx), dtype=bool)
+
+    return P1, PC, has_cue, disagree
 
 
-def tune(bench: Bench, idx: np.ndarray, select: str, k_inner: int, seed: int) -> ap.PipelineConfig:
-    """Pick stage-1 variant + gate/combination params using only the rows in idx.
+def tune(
+    bench: Bench,
+    idx: np.ndarray,
+    select: str,
+    k_inner: int,
+    seed: int,
+    tie_tolerance: float = 0.01,
+) -> Tuple[str, ap.PipelineConfig]:
+    """Pick stage-1 candidate + gate params using simplest-within-noise selection.
 
-    Each candidate is scored on out-of-fold calibrated probabilities (calibration refitted on
-    inner training folds), so calibration never scores the rows it was fitted on. Ties prefer
-    fewer CoT calls, then the shipped defaults. Calibration is finally refitted on all of idx.
+    Every config within tie_tolerance of the best inner-CV score is considered.
+    Ties are broken by: fewest CoT calls, then fewest extra passes, then null_cal off.
     """
     idx = np.asarray(idx)
     gold_ord = _idx([bench.gold[i] for i in idx])
@@ -501,30 +644,81 @@ def tune(bench: Bench, idx: np.ndarray, select: str, k_inner: int, seed: int) ->
     inner = stratified_folds(y_sub, k, seed)
     any_cue = np.array([bool(bench.cues[i]) for i in idx], dtype=bool)
     no_cue = np.zeros(len(idx), dtype=bool)
-    keys = list(GRID)
-    best_key, best = None, None
-    for variant in VARIANT_ORDER:
-        P1, PC = np.empty((len(idx), 3)), np.empty((len(idx), 3))
+
+    # Candidates supported in this bench
+    supported = [c for c in CANDIDATES if c[0] in bench.S1]
+
+    grid_keys = list(GRID)
+    pool = []
+
+    for cand_name, variant, null_cal, members, extra_passes in supported:
+        P1 = np.empty((len(idx), 3))
+        PC_greedy = np.empty((len(idx), 3))
         for test_pos in inner:
             train_pos = np.setdiff1d(np.arange(len(idx)), test_pos)
-            cal = calibrated_config(bench, idx[train_pos], variant)
-            P1[test_pos], PC[test_pos], _ = _arrays(bench, idx[test_pos], cal)
-        for values in itertools.product(*(GRID[k] for k in keys)):
-            params = dict(zip(keys, values))
+            cal = calibrated_config(bench, idx[train_pos], cand_name)
+            p1_t, pc_t, _, _ = _arrays(bench, idx[test_pos], cand_name, cal, "greedy")
+            P1[test_pos] = p1_t
+            PC_greedy[test_pos] = pc_t
+
+        m_labels = bench.S1_member_labels.get(cand_name)
+        disagree = (
+            np.array([len(set(m_labels[i])) > 1 for i in idx], dtype=bool)
+            if m_labels is not None
+            else np.zeros(len(idx), dtype=bool)
+        )
+
+        disagree_options = [False, True] if variant == "ensemble" else [False]
+
+        for values in itertools.product(*(GRID[k] for k in grid_keys)):
+            params = dict(zip(grid_keys, values))
             use_cues = params["gate_cues"] == "all"
             params["gate_cues"] = list(ap.ALL_CUES) if use_cues else []
-            labels, gated = fast_replay(P1, PC, any_cue if use_cues else no_cue, ap.PipelineConfig(**params))
-            key = (round(_fast_score(gold_ord, labels, select), 9), -int(gated.sum()))
-            if best_key is None or key > best_key:
-                best_key, best = key, (variant, params)
-    variant, params = best
-    return dataclasses.replace(calibrated_config(bench, idx, variant), **params)
+
+            for gate_dis in disagree_options:
+                p_full = dict(params)
+                p_full["gate_on_disagreement"] = gate_dis
+                p_full["stage1_variant"] = variant
+                p_full["null_calibration"] = null_cal
+                p_full["ensemble_members"] = members or ["v1", "v2_zero"]
+
+                cand_cfg = ap.PipelineConfig(**p_full)
+                labels, gated = fast_replay(
+                    P1, PC_greedy, any_cue if use_cues else no_cue, disagree, cand_cfg
+                )
+                score = round(_fast_score(gold_ord, labels, select), 9)
+                gated_count = int(gated.sum())
+                pool.append({
+                    "score": score,
+                    "gated_count": gated_count,
+                    "extra_passes": extra_passes,
+                    "null_cal": 1 if null_cal else 0,
+                    "cand_name": cand_name,
+                    "params": p_full,
+                })
+
+    if not pool:
+        sys.exit("No candidate configurations could be evaluated.")
+
+    # Simplest-within-noise selection
+    best_score = max(r["score"] for r in pool)
+    threshold = best_score - tie_tolerance
+    viable = [r for r in pool if r["score"] >= threshold]
+
+    # Sort key: fewest CoT calls, then fewest extra passes, then null calibration off, then higher score
+    viable.sort(key=lambda r: (r["gated_count"], r["extra_passes"], r["null_cal"], -r["score"]))
+    chosen = viable[0]
+
+    cand_name = chosen["cand_name"]
+    final_cfg = dataclasses.replace(calibrated_config(bench, idx, cand_name), **chosen["params"])
+    return cand_name, final_cfg
 
 
-def check_equivalence(bench: Bench, idx: np.ndarray, cfg: ap.PipelineConfig) -> int:
-    """Number of posts where the vectorised grid replay disagrees with the production code."""
-    ref, _ = replay(bench, idx, cfg)
-    labels, _ = fast_replay(*_arrays(bench, idx, cfg), cfg)
+def check_equivalence(bench: Bench, idx: np.ndarray, cand_key: str, cfg: ap.PipelineConfig) -> int:
+    """Number of posts where vectorised grid replay disagrees with production decision."""
+    ref, _ = replay(bench, idx, cfg, cand_key)
+    P1, PC, has_cue, disagree = _arrays(bench, idx, cand_key, cfg)
+    labels, _ = fast_replay(P1, PC, has_cue, disagree, cfg)
     return sum(1 for a, b in zip(ref, labels) if a != ap.LABELS[int(b)])
 
 
@@ -542,7 +736,8 @@ def stratified_folds(y: np.ndarray, k: int, seed: int) -> List[np.ndarray]:
 
 def gate_summary(cfg: ap.PipelineConfig) -> str:
     cues = "all cues" if cfg.gate_cues else "no cues"
-    return (f"stage1={cfg.stage1_variant}, margin<{cfg.gate_margin:g}, {cues}, guard={cfg.neutral_guard:g}, "
+    dis = ", dis_gate=y" if cfg.gate_on_disagreement else ""
+    return (f"stage1={cfg.stage1_variant}, margin<{cfg.gate_margin:g}, {cues}{dis}, guard={cfg.neutral_guard:g}, "
             f"w={cfg.cot_weight:g}, neutralize={'y' if cfg.cot_can_neutralize else 'n'}, "
             f"scale={cfg.scale:.2f}, bias_neu={cfg.bias['neutral']:+.2f}, bias_neg={cfg.bias['negative']:+.2f}")
 
@@ -555,35 +750,49 @@ def pct(x: float) -> str:
     return "  n/a" if x != x else f"{100 * x:5.1f}"
 
 
-def print_report(bench: Bench, preds, results, boot, mc, args, ident, fold_cfgs, routes_cv, s1_tuned, fitted, fitted_routes):
+def print_report(bench: Bench, preds, results, boot, mc, args, ident, fold_cfgs, routes_cv, s1_tuned, fitted_key, fitted, fitted_routes):
     n = len(bench.gold)
     counts = Counter(bench.gold)
-    print()
+
+    source_desc = ident + (" " + args.cache if getattr(args, "cache", None) else "")
+    if "4bit" in source_desc or "8bit" in source_desc:
+        print("\n*** Quantized scores — not comparable with production fp16; use for plumbing checks only ***\n")
+
     print(f"## ABSA benchmark: {n} posts (neg {counts['negative']}, neu {counts['neutral']}, pos {counts['positive']})")
     print(f"Scores: {ident}, pipeline {ap.PIPELINE_VERSION}; {args.folds}-fold CV, seed {args.seed}, "
-          f"selection metric {args.select_metric}; {bench.clipped} posts clipped to {ap.PipelineConfig().max_post_tokens} tokens")
+          f"selection metric {args.select_metric}, tie tolerance {args.tie_tolerance}; "
+          f"{bench.clipped} posts clipped to {ap.PipelineConfig().max_post_tokens} tokens")
     print()
-    print("| System | Acc % | κ | κ_w [95% CI] | Δκ_w vs A [95% CI] | Recall neg/neu/pos % | Macro-F1 | McNemar vs A |")
-    print("|---|---:|---:|---|---|---|---:|---|")
+
+    # If reference column present, print agreement with A
+    if "ref" in preds:
+        agree = sum(1 for a, b in zip(preds["ref"], preds["A"]) if a == b) / n * 100
+        print(f"Agreement rate between stored production predictions and replayed A: {agree:.1f}%\n")
+
+    print("| System | Acc % | κ | κ_w [95% CI] | κ_qw | Δκ_w vs A [95% CI] | Recall neg/neu/pos % | Macro-F1 | McNemar vs A |")
+    print("|---|---:|---:|---|---:|---|---|---:|---|")
     for key, m in results.items():
         r = m["recall"]
         ci, dci = boot[key]["kappa_w_ci"], boot[key]["delta_ci"]
         if key == "A":
             mc_txt, delta = "—", "—"
-        else:
+        elif key in mc:
             p, ab, ba = mc[key]
             mc_txt = f"p={p:.3f} (+{ba}/−{ab})"
             delta = f"{m['kappa_w'] - results['A']['kappa_w']:+.3f} [{dci[0]:+.2f}, {dci[1]:+.2f}]"
-        print(f"| {SYSTEMS[key]} | {pct(m['accuracy'])} | {m['kappa']:.3f} | {m['kappa_w']:.3f} [{ci[0]:.2f}, {ci[1]:.2f}] "
-              f"| {delta} | {pct(r['negative'])}/{pct(r['neutral'])}/{pct(r['positive'])} | {m['macro_f1']:.3f} | {mc_txt} |")
+        else:
+            mc_txt, delta = "—", "—"
+        sys_name = SYSTEMS.get(key, key)
+        print(f"| {sys_name} | {pct(m['accuracy'])} | {m['kappa']:.3f} | {m['kappa_w']:.3f} [{ci[0]:.2f}, {ci[1]:.2f}] "
+              f"| {m['kappa_qw']:.3f} | {delta} | {pct(r['negative'])}/{pct(r['neutral'])}/{pct(r['positive'])} | {m['macro_f1']:.3f} | {mc_txt} |")
     print()
     print("McNemar column: (+fixed/−broken) = posts A got wrong that the system gets right / A right, system wrong.")
 
     print("\n### Confusion matrices (rows = gold, cols = predicted: neg, neu, pos)")
-    for key in ("A", "B", "s1_v2_cal", "hybrid_cv"):
+    for key in ("A", "B", "s1_v2_zero_cal", "shipped", "hybrid_cv"):
         if key in results:
             cm = results[key]["confusion"]
-            print(f"- {SYSTEMS[key]}: " + " | ".join(f"{ORDER[i][:3]} {cm[i]}" for i in range(3)))
+            print(f"- {SYSTEMS.get(key, key)}: " + " | ".join(f"{ORDER[i][:3]} {cm[i]}" for i in range(3)))
 
     if any(t is not None for t in bench.legacy45):
         missing = [i for i, t in enumerate(bench.legacy45) if t is not None and "Verdict:" not in t]
@@ -601,22 +810,11 @@ def print_report(bench: Bench, preds, results, boot, mc, args, ident, fold_cfgs,
     print(f"- {len(gated)}/{n} posts ({100 * len(gated) / n:.0f}%) routed to CoT; on those, CoT fixed {fixed} "
           f"and broke {broke} stage-1 labels.")
     print("- Per-fold selections:")
-    for f, cfg in enumerate(fold_cfgs):
-        print(f"  - fold {f + 1}: {gate_summary(cfg)}")
+    for f, (c_name, cfg) in enumerate(fold_cfgs):
+        print(f"  - fold {f + 1} ({c_name}): {gate_summary(cfg)}")
 
-    print("\n### Cue categories (fitted config, in-sample: optimistic)")
-    print("| Cue | posts | stage-1 correct | CoT alone correct | hybrid correct |")
-    print("|---|---:|---:|---:|---:|")
-    p1 = [ap.LABELS[ap.argmax(ap.calibrate(s, fitted))] for s in bench.S1[fitted.stage1_variant]]
-    hyb, _ = replay(bench, range(n), fitted)
-    for cue in ap.ALL_CUES:
-        idx = [i for i in range(n) if cue in bench.cues[i] and p1[i] != "neutral"]
-        if idx:
-            ok = lambda lab: sum(1 for i in idx if lab[i] == bench.gold[i])
-            print(f"| {cue} | {len(idx)} | {ok(p1)} | {ok(preds['cot_v2'])} | {ok(hyb)} |")
-
-    fm = metrics(bench.gold, hyb)
-    print(f"\n### Fitted on all {n} posts (deployable config)")
+    fm = metrics(bench.gold, replay(bench, range(n), fitted, fitted_key)[0])
+    print(f"\n### Fitted on all {n} posts ({fitted_key})")
     print(f"- {gate_summary(fitted)}, cot_scale={fitted.cot_scale:.2f}")
     print(f"- In-sample (optimistic): acc {pct(fm['accuracy'])}%, κ_w {fm['kappa_w']:.3f}, "
           f"{fitted_routes.count('cot')}/{n} posts routed to CoT. Trust the nested-CV row above, not this line.")
@@ -636,9 +834,11 @@ def main(argv=None):
     ap_.add_argument("--text-col")
     ap_.add_argument("--target-col")
     ap_.add_argument("--label-col")
+    ap_.add_argument("--reference-col", help="column with stored production predictions")
     ap_.add_argument("--target", help="target for every row when the file has no target column")
     ap_.add_argument("--no-clean", action="store_true", help="skip the production text cleaning")
     ap_.add_argument("--limit", type=int, help="only use the first N rows (smoke tests)")
+    ap_.add_argument("--where", help="filter rows: col=val (e.g. label_source=random)")
     ap_.add_argument("--backend", choices=("local", "remote"), default="local")
     ap_.add_argument("--model", default="Qwen/Qwen2.5-3B-Instruct")
     ap_.add_argument("--quant", choices=("none", "8bit", "4bit"), default="none",
@@ -646,13 +846,16 @@ def main(argv=None):
     ap_.add_argument("--url", help="Space URL for --backend remote")
     ap_.add_argument("--key", help="API secret (default: $ABSA_API_KEY, $HF_API_SECRET or $API_SECRET)")
     ap_.add_argument("--batch-size", type=int, default=8)
+    ap_.add_argument("--self-consistency", type=int, default=0, help="number of self-consistency samples")
     ap_.add_argument("--cache", help="raw-score cache file (default: <out>/raw_<backend>_<version>.jsonl)")
     ap_.add_argument("--skip-run", action="store_true", help="analyze the cache only; never call a model")
+    ap_.add_argument("--config", default="hf-space/pipeline_config.json", help="path to pipeline config for shipped row")
     ap_.add_argument("--out", default="benchmark_results")
     ap_.add_argument("--folds", type=int, default=5)
     ap_.add_argument("--seed", type=int, default=13)
     ap_.add_argument("--bootstrap", type=int, default=2000)
     ap_.add_argument("--select-metric", choices=tuple(SELECT), default="kappa_w")
+    ap_.add_argument("--tie-tolerance", type=float, default=0.01, help="tolerance for simplest-within-noise tuning")
     ap_.add_argument("--write-config", help="write the config fitted on all rows to this path")
     args = ap_.parse_args(argv)
 
@@ -663,7 +866,7 @@ def main(argv=None):
         if not args.url:
             sys.exit("--backend remote needs --url")
         key = args.key or os.environ.get("ABSA_API_KEY") or os.environ.get("HF_API_SECRET") or os.environ.get("API_SECRET") or ""
-        backend = RemoteBackend(args.url, key)
+        backend = RemoteBackend(args.url, key, self_consistency=args.self_consistency)
         ident = backend.ident
     else:
         ident = f"local-{args.model.split('/')[-1]}-{args.quant}"
@@ -676,7 +879,7 @@ def main(argv=None):
                 have = {json.loads(l)["key"] for l in fh if l.strip()}
             missing = any(row_key(r) not in have for r in rows)
         if missing:
-            backend = LocalBackend(args.model, args.quant)
+            backend = LocalBackend(args.model, args.quant, self_consistency=args.self_consistency)
     if args.skip_run:
         backend = None
     cache = ensure_raw(rows, backend, cache_path, args.batch_size)
@@ -686,56 +889,79 @@ def main(argv=None):
     if args.folds > min(Counter(bench.gold).values()):
         sys.exit(f"--folds {args.folds} exceeds the smallest class size; lower it")
 
-    preds: Dict[str, List[str]] = {"A": argmax_labels(bench.S1["v1"])}
+    preds: Dict[str, List[str]] = {}
+
+    # Stored reference row if available
+    if bench.ref and any(bench.ref):
+        preds["ref"] = [r if r else "neutral" for r in bench.ref]
+
+    # Baseline A
+    preds["A"] = argmax_labels(bench.S1["v1"])
+
+    # Legacy CoT rows
     if all(t is not None for t in bench.legacy45):
         preds["B"] = [ap.legacy_parse(t) for t in bench.legacy45]
         preds["B96"] = [ap.strict_parse(t) or "neutral" for t in bench.legacy_full]
-    preds["cot_v2"] = argmax_labels(bench.cot)
-    preds["s1_v2_zero"] = argmax_labels(bench.S1["v2_zero"])
-    preds["s1_v2"] = argmax_labels(bench.S1["v2"])
-    preds["hybrid_default"], _ = replay(bench, range(n), ap.PipelineConfig())
 
-    # Out-of-fold predictions for everything that is fitted.
-    s1_cal = {v: [None] * n for v in ("v2_zero", "v2")}
+    # New CoT alone
+    preds["cot_v2"] = argmax_labels(bench.cot)
+
+    # Self-consistency CoT alone if available
+    if bench.cot_samples is not None:
+        sc_labels = []
+        for cs in bench.cot_samples:
+            if cs:
+                mean_p = np.mean([_softmax_rows(np.array([c["scores"]]))[0] for c in cs], axis=0)
+                sc_labels.append(ap.LABELS[int(mean_p.argmax())])
+            else:
+                sc_labels.append("neutral")
+        preds["cot_sc"] = sc_labels
+
+    # Shipped config
+    shipped_cfg = ap.PipelineConfig.load(args.config)
+    preds["shipped"], _ = replay(bench, range(n), shipped_cfg, shipped_cfg.stage1_variant)
+
+    # Out-of-fold predictions for individual calibrated stage-1 candidates
+    for cand_key in bench.S1:
+        s1_out = [None] * n
+        for test in stratified_folds(bench.y, args.folds, args.seed):
+            train = np.setdiff1d(np.arange(n), test)
+            cal = calibrated_config(bench, train, cand_key)
+            for i in test:
+                s1_out[i] = ap.LABELS[ap.argmax(ap.calibrate(bench.S1[cand_key][i], cal))]
+        preds[f"s1_{cand_key}_cal"] = s1_out
+
+    # Out-of-fold nested CV for Hybrid
     hyb_cv = [None] * n
     routes_cv = [None] * n
-    s1_tuned = [None] * n  # stage-1 labels of the config each fold selected
+    s1_tuned = [None] * n
     fold_cfgs = []
     mismatches = 0
     for test in stratified_folds(bench.y, args.folds, args.seed):
         train = np.setdiff1d(np.arange(n), test)
-        for v in s1_cal:
-            cal = calibrated_config(bench, train, v)
-            for i in test:
-                s1_cal[v][i] = ap.LABELS[ap.argmax(ap.calibrate(bench.S1[v][i], cal))]
-        tuned = tune(bench, train, args.select_metric, args.folds, args.seed)
-        fold_cfgs.append(tuned)
-        mismatches += check_equivalence(bench, test, tuned)
+        tuned_cand, tuned = tune(bench, train, args.select_metric, args.folds, args.seed, args.tie_tolerance)
+        fold_cfgs.append((tuned_cand, tuned))
+        mismatches += check_equivalence(bench, test, tuned_cand, tuned)
         for i in test:
-            s1_tuned[i] = ap.LABELS[ap.argmax(ap.calibrate(bench.S1[tuned.stage1_variant][i], tuned))]
-        labels, routes = replay(bench, test, tuned)
+            s1_tuned[i] = ap.LABELS[ap.argmax(ap.calibrate(bench.S1[tuned_cand][i], tuned))]
+        labels, routes = replay(bench, test, tuned, tuned_cand)
         for i, lab, rt in zip(test, labels, routes):
             hyb_cv[i], routes_cv[i] = lab, rt
-    preds["s1_v2_zero_cal"] = s1_cal["v2_zero"]
-    preds["s1_v2_cal"] = s1_cal["v2"]
     preds["hybrid_cv"] = hyb_cv
 
-    # Deployable config: fit on every row.
+    # Deployable config: fit on every row
     all_idx = np.arange(n)
-    fitted = tune(bench, all_idx, args.select_metric, args.folds, args.seed)
-    mismatches += check_equivalence(bench, all_idx, fitted)
-    _, fitted_routes = replay(bench, all_idx, fitted)
-    if mismatches:
-        print(f"WARNING: vectorised grid replay disagreed with absa_pipeline.decide on {mismatches} posts "
-              "(near-exact ties); reported predictions use absa_pipeline.decide.")
+    fitted_key, fitted = tune(bench, all_idx, args.select_metric, args.folds, args.seed, args.tie_tolerance)
+    mismatches += check_equivalence(bench, all_idx, fitted_key, fitted)
+    _, fitted_routes = replay(bench, all_idx, fitted, fitted_key)
 
     order = [k for k in SYSTEMS if k in preds]
     results = {k: metrics(bench.gold, preds[k]) for k in order}
-    mc = {k: mcnemar_exact(bench.gold, preds["A"], preds[k]) for k in order if k != "A"}
+    mc = {k: mcnemar_exact(bench.gold, preds["A"], preds[k]) for k in order if k not in ("A", "ref")}
     boot = bootstrap(bench.gold, {k: preds[k] for k in order}, "A", args.bootstrap, args.seed)
-    print_report(bench, preds, results, boot, mc, args, ident, fold_cfgs, routes_cv, s1_tuned, fitted, fitted_routes)
+    print_report(bench, preds, results, boot, mc, args, ident, fold_cfgs, routes_cv, s1_tuned, fitted_key, fitted, fitted_routes)
 
-    # Artifacts.
+    # Artifacts
     pred_path = os.path.join(args.out, "predictions.csv")
     with open(pred_path, "w", encoding="utf-8", newline="") as fh:
         w = csv.writer(fh)
@@ -746,6 +972,7 @@ def main(argv=None):
     fitted_dict = fitted.to_dict()
     fitted_dict["_fitted"] = {
         "data": os.path.basename(args.data), "n": n, "scores": ident, "pipeline": ap.PIPELINE_VERSION,
+        "candidate": fitted_key,
         "select_metric": args.select_metric, "nested_cv_kappa_w": round(results["hybrid_cv"]["kappa_w"], 4),
         "nested_cv_accuracy": round(results["hybrid_cv"]["accuracy"], 4),
     }
@@ -754,9 +981,9 @@ def main(argv=None):
     with open(os.path.join(args.out, "results.json"), "w", encoding="utf-8") as fh:
         json.dump({
             "n": n, "scores": ident, "pipeline": ap.PIPELINE_VERSION,
-            "systems": {k: {"description": SYSTEMS[k], **results[k], **boot[k],
+            "systems": {k: {"description": SYSTEMS.get(k, k), **results[k], **boot[k],
                             **({"mcnemar_p": mc[k][0]} if k in mc else {})} for k in order},
-            "fold_configs": [c.to_dict() for c in fold_cfgs],
+            "fold_cfgs": [(c, cfg.to_dict()) for c, cfg in fold_cfgs],
             "fitted_config": fitted_dict,
         }, fh, indent=2)
     if args.write_config:

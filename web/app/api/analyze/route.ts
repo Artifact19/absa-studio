@@ -130,6 +130,7 @@ export async function POST(req: NextRequest) {
                     subreddit: cand.rawPost.subreddit || null,
                     context_url: cand.rawPost.url || null,
                     rationale: item.rationale || null,
+                    model_route: item.route || null,
                     "qwen2.5-3b-instruct_sentiment": item.label,
                     qwen_prob_pos: item.prob_pos,
                     qwen_prob_neg: item.prob_neg,
@@ -149,8 +150,13 @@ export async function POST(req: NextRequest) {
               if (upsertErr) {
                 console.warn("Retrying upsert with legacy schema fallback...", upsertErr.message);
                 const legacyRows = insertRows.map((r) => {
-                  const { platform, subreddit, context_url, rationale, ...legacy } = r;
-                  return legacy;
+                  const copy = { ...r } as Record<string, unknown>;
+                  delete copy.platform;
+                  delete copy.subreddit;
+                  delete copy.context_url;
+                  delete copy.rationale;
+                  delete copy.model_route;
+                  return copy;
                 });
                 await supabase
                   .from("absa_tweets")
@@ -480,10 +486,11 @@ export async function POST(req: NextRequest) {
     const { filtered, windowInfo } = filterTweetsByWindow(processedRows, chosenWindowId, now);
 
     // 4. Calculate weighted & raw sentiment on the selected window
-    const { counts, weighted, rawVerdict } = calculateWeightedSentiment(filtered, now);
+    const sentimentMode = process.env.SENTIMENT_SHARE_MODE === "probability" ? "probability" : "count";
+    const { counts, weighted, rawVerdict } = calculateWeightedSentiment(filtered, now, sentimentMode);
 
     // 5. Calculate velocity over all historical data
-    const velocity = calculateSentimentVelocity(processedRows, now);
+    const velocity = calculateSentimentVelocity(processedRows, now, sentimentMode);
 
     // 6. Select top 5 positive and top 5 negative evidence items with author & content diversity
     const selectDiverseEvidence = (items: ProcessedRow[], maxCount = 5): ProcessedRow[] => {

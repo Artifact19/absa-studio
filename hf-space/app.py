@@ -91,6 +91,7 @@ class ClassifyResp(BaseModel):
 class RawReq(BaseModel):
     texts: List[str] = Field(..., max_length=16)
     target: str
+    self_consistency: int = Field(0, ge=0, le=8)
 
 class Evidence(BaseModel):
     user: str
@@ -126,8 +127,8 @@ def _classify(texts: List[str], target: str) -> List[dict]:
     return ENGINE.classify(texts, target, CONFIG)
 
 @spaces.GPU(duration=120)
-def _raw_scores(texts: List[str], target: str) -> List[dict]:
-    return ENGINE.raw_scores(texts, target, CONFIG)
+def _raw_scores(texts: List[str], target: str, self_consistency: int = 0) -> List[dict]:
+    return ENGINE.raw_scores(texts, target, CONFIG, self_consistency=self_consistency)
 
 @spaces.GPU(duration=90)
 def _synth_stream(prompt: str):
@@ -174,7 +175,7 @@ def classify_batch(req: ClassifyReq):
 @api.post("/eval/raw-scores", dependencies=[Depends(verify)])
 def eval_raw_scores(req: RawReq):
     """Benchmark support: every stage-1 variant plus CoT on all posts (see benchmark.py)."""
-    results = _raw_scores(req.texts, req.target) if req.texts else []
+    results = _raw_scores(req.texts, req.target, req.self_consistency) if req.texts else []
     return {"pipeline_version": ap.PIPELINE_VERSION, "model": MODEL_ID, "results": results}
 
 INSIGHT_SYS = """You write executive sentiment briefs for busy readers. Output EXACTLY this markdown, nothing else:

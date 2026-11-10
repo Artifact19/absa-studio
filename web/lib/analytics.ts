@@ -13,6 +13,9 @@ export interface RawTweetItem {
   confidence?: number;
   handle?: string;
   text?: string;
+  p_pos?: number;
+  p_neg?: number;
+  p_neu?: number;
 }
 
 /**
@@ -191,10 +194,12 @@ export function filterTweetsByWindow(
 
 /**
  * Calculates exponential recency weighted sentiment shares per §7.2.
+ * Supports discrete "count" mode (default) and soft "probability" mode.
  */
 export function calculateWeightedSentiment(
   tweets: RawTweetItem[],
-  now = new Date()
+  now = new Date(),
+  mode: "count" | "probability" = "count"
 ): {
   counts: { positive: number; negative: number; neutral: number; total: number };
   weighted: {
@@ -238,9 +243,35 @@ export function calculateWeightedSentiment(
 
     const w = weight(new Date(tweet.time), now);
     sumW += w;
-    if (s === "positive") sumWPos += w;
-    else if (s === "negative") sumWNeg += w;
-    else sumWNeu += w;
+
+    if (mode === "probability") {
+      const pPos = tweet.p_pos;
+      const pNeg = tweet.p_neg;
+      const pNeu = tweet.p_neu;
+      const hasValidProbs =
+        typeof pPos === "number" &&
+        typeof pNeg === "number" &&
+        typeof pNeu === "number" &&
+        !isNaN(pPos) &&
+        !isNaN(pNeg) &&
+        !isNaN(pNeu) &&
+        pPos + pNeg + pNeu > 0.01;
+
+      if (hasValidProbs) {
+        sumWPos += w * pPos;
+        sumWNeg += w * pNeg;
+        sumWNeu += w * pNeu;
+      } else {
+        // Fallback to discrete label
+        if (s === "positive") sumWPos += w;
+        else if (s === "negative") sumWNeg += w;
+        else sumWNeu += w;
+      }
+    } else {
+      if (s === "positive") sumWPos += w;
+      else if (s === "negative") sumWNeg += w;
+      else sumWNeu += w;
+    }
   }
 
   // Calculate weighted shares Sc
@@ -285,17 +316,12 @@ export function calculateWeightedSentiment(
 
 /**
  * Calculates Sentiment Velocity Badge per §7.3.
- * P = positive share (percent, unweighted) = 100 * positive / total
- * Delta = P_recent(7D) - P_baseline(All-Time) (percentage points)
- * State:
- *   bullish: Delta > +3
- *   declining: Delta < -3
- *   stable: -3 <= Delta <= +3
- *   insufficient: recent n < 10 or depthDays < 14
+ * Supports discrete "count" mode (default) and soft "probability" mode.
  */
 export function calculateSentimentVelocity(
   allTweets: RawTweetItem[],
-  now = new Date()
+  now = new Date(),
+  mode: "count" | "probability" = "count"
 ): VelocityData {
   if (allTweets.length === 0) {
     return { delta: 0, state: "insufficient", pRecent: 0, pBaseline: 0 };
@@ -314,10 +340,24 @@ export function calculateSentimentVelocity(
     return { delta: 0, state: "insufficient", pRecent: 0, pBaseline: 0 };
   }
 
-  const recentPos = recentTweets.filter((t) => t.sentiment === "positive").length;
-  const pRecent = (recentPos / recentTweets.length) * 100;
+  let recentPos = 0;
+  let baselinePos = 0;
 
-  const baselinePos = allTweets.filter((t) => t.sentiment === "positive").length;
+  if (mode === "probability") {
+    recentPos = recentTweets.reduce((acc, t) => {
+      const p = typeof t.p_pos === "number" && !isNaN(t.p_pos) ? t.p_pos : t.sentiment === "positive" ? 1 : 0;
+      return acc + p;
+    }, 0);
+    baselinePos = allTweets.reduce((acc, t) => {
+      const p = typeof t.p_pos === "number" && !isNaN(t.p_pos) ? t.p_pos : t.sentiment === "positive" ? 1 : 0;
+      return acc + p;
+    }, 0);
+  } else {
+    recentPos = recentTweets.filter((t) => t.sentiment === "positive").length;
+    baselinePos = allTweets.filter((t) => t.sentiment === "positive").length;
+  }
+
+  const pRecent = (recentPos / recentTweets.length) * 100;
   const pBaseline = (baselinePos / allTweets.length) * 100;
 
   const rawDelta = pRecent - pBaseline;

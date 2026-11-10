@@ -50,6 +50,7 @@ interface HFClassifyItem {
   prob_neu: number;
   confidence: number;
   rationale?: string;
+  route?: string;
 }
 
 interface HFClassifyResp {
@@ -132,6 +133,7 @@ export async function reclassifyTopic(topicKeyFilter?: string) {
               qwen_prob_neg: item.prob_neg,
               qwen_prob_neu: item.prob_neu,
               rationale: item.rationale || null,
+              model_route: item.route || null,
             });
 
           if (row.dedup_key) {

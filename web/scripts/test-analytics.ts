@@ -125,4 +125,46 @@ assert(sanitizeHandle("@satya_nadella") === "satya_nadella", "Leading @ stripped
 assert(sanitizeHandle("<script>alert(1)</script>") === "unknown", "Malicious handle sanitized to unknown");
 assert(sanitizeHandle("invalid handle with spaces") === "unknown", "Spaces sanitized to unknown");
 
+// 6. Probability Mode Sentiment Shares & Fallback Tests (Step 9)
+console.log("\n--- 6. Probability Mode Sentiment Shares & Fallback ---");
+
+// Test 6a: Equivalence with count mode when probabilities are one-hot [1, 0, 0]
+const oneHotTweets: RawTweetItem[] = [
+  { time: fixedNow, sentiment: "positive", p_pos: 1.0, p_neg: 0.0, p_neu: 0.0 },
+  { time: fixedNow, sentiment: "negative", p_pos: 0.0, p_neg: 1.0, p_neu: 0.0 },
+  { time: fixedNow, sentiment: "neutral", p_pos: 0.0, p_neg: 0.0, p_neu: 1.0 },
+];
+const countRes = calculateWeightedSentiment(oneHotTweets, fixedNow, "count");
+const probRes = calculateWeightedSentiment(oneHotTweets, fixedNow, "probability");
+assert(
+  Math.abs(countRes.weighted.pctPos - probRes.weighted.pctPos) < 1e-4 &&
+    Math.abs(countRes.weighted.pctNeg - probRes.weighted.pctNeg) < 1e-4 &&
+    Math.abs(countRes.weighted.pctNeu - probRes.weighted.pctNeu) < 1e-4,
+  "Probability mode equals count mode for one-hot probabilities"
+);
+
+// Test 6b: Placeholder fallback (missing probabilities revert to discrete label)
+const fallbackTweets: RawTweetItem[] = [
+  { time: fixedNow, sentiment: "positive" },
+  { time: fixedNow, sentiment: "positive", p_pos: undefined, p_neg: undefined, p_neu: undefined },
+];
+const fbRes = calculateWeightedSentiment(fallbackTweets, fixedNow, "probability");
+assert(
+  fbRes.weighted.pctPos === 100 && fbRes.weighted.verdict === "positive",
+  "Missing probabilities cleanly fall back to discrete label"
+);
+
+// Test 6c: Soft probability aggregation with recency weighting
+const softTweets: RawTweetItem[] = [
+  { time: fixedNow, sentiment: "positive", p_pos: 0.7, p_neg: 0.1, p_neu: 0.2 },
+  { time: date14DaysAgo, sentiment: "negative", p_pos: 0.1, p_neg: 0.8, p_neu: 0.1 },
+];
+const softRes = calculateWeightedSentiment(softTweets, fixedNow, "probability");
+assert(
+  Math.abs(softRes.weighted.pctPos - 50.0) < 0.2 &&
+    Math.abs(softRes.weighted.pctNeg - 33.3) < 0.2 &&
+    softRes.weighted.verdict === "positive",
+  "Soft probability shares correctly combine with recency weights"
+);
+
 console.log("\n🎉 ALL UNIT ACCEPTANCE TESTS PASSED SUCCESSFULLY!");

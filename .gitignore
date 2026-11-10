@@ -23,6 +23,8 @@ env/
 
 # Classifier benchmark outputs (raw scores contain annotated post text)
 benchmark_results/
+scratch/
+data/
 
 # IDE & OS
 .DS_Store

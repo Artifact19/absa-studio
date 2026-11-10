@@ -6,6 +6,7 @@ import { StatsGrid } from "@/components/admin/StatsGrid";
 import { TweetTable } from "@/components/admin/TweetTable";
 import { ScrapeForm } from "@/components/admin/ScrapeForm";
 import { PurgeDialog } from "@/components/admin/PurgeDialog";
+import { LabelQueue } from "@/components/admin/LabelQueue";
 import { AdminStats, AdminTweet } from "@/lib/types";
 import { Lock, KeyRound, ShieldAlert, Trash2, ArrowLeft, RefreshCw, LogOut, Loader2 } from "lucide-react";
 
@@ -96,8 +97,16 @@ export default function AdminPage() {
 
   // Check auth on initial mount
   useEffect(() => {
-    loadStats();
-    loadTweets(1);
+    let active = true;
+    void (async () => {
+      if (active) {
+        await loadStats();
+        await loadTweets(1);
+      }
+    })();
+    return () => {
+      active = false;
+    };
   }, [loadStats, loadTweets]);
 
   // Handle Login
@@ -323,7 +332,12 @@ export default function AdminPage() {
           />
         </section>
 
-        {/* 3. Tweets Table */}
+        {/* 3. Human Annotation Loop */}
+        <section className="space-y-3">
+          <LabelQueue />
+        </section>
+
+        {/* 4. Tweets Table */}
         <section className="space-y-3">
           <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
             Tweet Records & Classifications

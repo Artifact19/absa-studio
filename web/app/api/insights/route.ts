@@ -69,7 +69,8 @@ export async function POST(req: NextRequest) {
         : defaultWindowId;
 
     const { filtered } = filterTweetsByWindow(processedRows, chosenWindowId, now);
-    const { counts, weighted } = calculateWeightedSentiment(filtered, now);
+    const sentimentMode = process.env.SENTIMENT_SHARE_MODE === "probability" ? "probability" : "count";
+    const { counts, weighted } = calculateWeightedSentiment(filtered, now, sentimentMode);
 
     const pickDiverse = (items: typeof filtered, maxCount = 5) => {
       const sorted = [...items].sort(
