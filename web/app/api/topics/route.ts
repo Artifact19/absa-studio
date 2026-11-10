@@ -31,6 +31,8 @@ export async function GET() {
 
     const enriched = rows.map((r) => ({
       ...r,
+      topic: r.topic_key,
+      aspect: r.topic_key,
       genre: r.genre || classifyTopicGenre(r.topic_key),
     }));
 

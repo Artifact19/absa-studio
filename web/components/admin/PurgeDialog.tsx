@@ -46,21 +46,27 @@ export function PurgeDialog({
   const [stage, setStage] = useState<1 | 2 | 3>(1);
 
   // Available topics loaded from API
-  const [topicOptions, setTopicOptions] = useState<string[]>(availableTopics.length ? availableTopics : ["gta 6"]);
+  const [topicOptions, setTopicOptions] = useState<string[]>(
+    availableTopics.length ? availableTopics : ["gta 6"]
+  );
 
   useEffect(() => {
     fetch("/api/topics")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data && data.topics && Array.isArray(data.topics)) {
-          const list: string[] = data.topics.map((t: { aspect?: string; topic: string }) => t.aspect || t.topic);
+          const list: string[] = data.topics
+            .map((t: { aspect?: string; topic?: string; topic_key?: string }) => t.topic_key || t.topic || t.aspect || "")
+            .filter((x: string) => Boolean(x && x.trim()));
           if (list.length) {
-            setTopicOptions(Array.from(new Set(list)));
+            const unique = Array.from(new Set(list));
+            setTopicOptions(unique);
+            setSelectedTopic((prev) => (prev && unique.includes(prev) ? prev : activeTopic || unique[0]));
           }
         }
       })
       .catch(() => {});
-  }, []);
+  }, [activeTopic]);
 
   // Stage 1: Scope Inputs
   const [scope, setScope] = useState<"topic" | "unlabeled" | "retention" | "all">("topic");
@@ -109,7 +115,7 @@ export function PurgeDialog({
   useEffect(() => {
     if (isOpen) {
       setStage(1);
-      setSelectedTopic(activeTopic || (availableTopics[0] || "gta 6"));
+      setSelectedTopic(activeTopic || (topicOptions[0] || availableTopics[0] || "gta 6"));
       setCustomTopicInput("");
       setPreserveHumanTruth(true);
       setAckIrreversible(false);

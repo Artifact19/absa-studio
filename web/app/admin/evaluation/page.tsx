@@ -111,7 +111,10 @@ export default function EvaluationPage() {
         const res = await fetch("/api/topics");
         if (res.ok) {
           const data = await res.json();
-          const list = (data.topics || []).map((t: { topic: string; aspect?: string }) => t.aspect || t.topic);
+          const rawList = Array.isArray(data.topics) ? data.topics : [];
+          const list: string[] = rawList
+            .map((t: { topic_key?: string; topic?: string; aspect?: string }) => t.topic_key || t.topic || t.aspect || "")
+            .filter((x: string) => Boolean(x && x.trim()));
           setTopicsList(Array.from(new Set(list)));
         }
       } catch {
