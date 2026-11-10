@@ -7,7 +7,7 @@ import { TweetTable } from "@/components/admin/TweetTable";
 import { ScrapeForm } from "@/components/admin/ScrapeForm";
 import { PurgeDialog } from "@/components/admin/PurgeDialog";
 import { AdminStats, AdminTweet } from "@/lib/types";
-import { Lock, KeyRound, ShieldAlert, Trash2, ArrowLeft, RefreshCw, LogOut, Loader2, ChevronDown, Sparkles, ChevronRight } from "lucide-react";
+import { Lock, KeyRound, ShieldAlert, Trash2, ArrowLeft, RefreshCw, LogOut, Loader2, ChevronDown, Sparkles, ChevronRight, BarChart3 } from "lucide-react";
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -289,6 +289,14 @@ export default function AdminPage() {
             >
               <Sparkles className="h-3.5 w-3.5 text-white" />
               <span>Annotation Studio</span>
+            </Link>
+
+            <Link
+              href="/admin/evaluation"
+              className="flex items-center gap-1.5 rounded-full liquid-pill-cyan px-4 py-2 text-xs font-bold cursor-pointer shadow-md"
+            >
+              <BarChart3 className="h-3.5 w-3.5 text-white" />
+              <span>Evaluation Metrics</span>
             </Link>
 
             <button

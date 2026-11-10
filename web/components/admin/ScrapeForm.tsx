@@ -172,7 +172,7 @@ export function ScrapeForm({ onJobComplete }: ScrapeFormProps) {
           <button
             type="submit"
             disabled={isRunning || !query.trim()}
-            className="liquid-btn-ingest px-7 py-3 text-xs sm:text-sm font-extrabold tracking-wide flex items-center gap-2.5 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed shadow-lg"
+            className="liquid-btn-ingest px-7 py-3 text-xs sm:text-sm font-extrabold tracking-wide flex items-center gap-2.5 shadow-lg"
           >
             {isRunning ? (
               <>

@@ -22,6 +22,7 @@ import {
   Layers,
   Flame,
   Award,
+  BarChart3,
 } from "lucide-react";
 
 interface QueueItem {
@@ -417,6 +418,15 @@ export default function AnnotatePage() {
                 ))}
               </select>
             )}
+
+            {/* View Live Evaluation Metrics */}
+            <Link
+              href="/admin/evaluation"
+              className="liquid-pill-cyan px-3.5 py-1.5 text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
+            >
+              <BarChart3 className="h-3.5 w-3.5 text-white" />
+              <span>Metrics & Kappa</span>
+            </Link>
 
             {/* Export CSV */}
             <a
