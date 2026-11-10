@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { SentimentLabel } from "@/lib/types";
 import {
   Tag,
@@ -214,6 +215,15 @@ export function LabelQueue({ onLabelSubmitted }: LabelQueueProps = {}) {
               <span>Uncertain</span>
             </button>
           </div>
+
+          {/* Dedicated Studio Link */}
+          <Link
+            href="/admin/annotate"
+            className="flex items-center gap-1 rounded-full glass-pill px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:text-indigo-900 cursor-pointer"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
+            <span>Dedicated Studio ↗</span>
+          </Link>
 
           {/* Export CSV */}
           <a

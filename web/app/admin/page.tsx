@@ -8,7 +8,7 @@ import { ScrapeForm } from "@/components/admin/ScrapeForm";
 import { PurgeDialog } from "@/components/admin/PurgeDialog";
 import { LabelQueue } from "@/components/admin/LabelQueue";
 import { AdminStats, AdminTweet } from "@/lib/types";
-import { Lock, KeyRound, ShieldAlert, Trash2, ArrowLeft, RefreshCw, LogOut, Loader2, ChevronDown } from "lucide-react";
+import { Lock, KeyRound, ShieldAlert, Trash2, ArrowLeft, RefreshCw, LogOut, Loader2, ChevronDown, Sparkles, ChevronRight } from "lucide-react";
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -284,6 +284,14 @@ export default function AdminPage() {
               <span>Refresh</span>
             </button>
 
+            <Link
+              href="/admin/annotate"
+              className="flex items-center gap-1.5 rounded-full glass-pill px-3.5 py-2 text-xs font-semibold text-indigo-700 hover:text-indigo-900 cursor-pointer"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
+              <span>Annotation Studio</span>
+            </Link>
+
             <button
               type="button"
               onClick={() => setIsPurgeOpen(true)}
@@ -337,6 +345,19 @@ export default function AdminPage() {
 
         {/* 3. Human Annotation Loop */}
         <section className="space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Active Human Annotation Queue
+            </h2>
+            <Link
+              href="/admin/annotate"
+              className="liquid-pill-primary px-4 py-1.5 text-xs font-bold flex items-center gap-2 cursor-pointer shadow-md self-start sm:self-auto hover:opacity-95 transition"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-white" />
+              <span>Open Dedicated Liquid Glass Studio</span>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
           <LabelQueue
             onLabelSubmitted={() => {
               loadTweets(currentPage);

@@ -143,3 +143,258 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(100, 116, 139, 0.65);
 }
+
+/* =========================================================================
+   Ultra-Liquid Glass Kit (VisionOS / 3D Iridescent Caustics System)
+   ========================================================================= */
+
+.liquid-glass-canvas {
+  position: relative;
+  overflow: hidden;
+}
+
+.liquid-glass-canvas::before {
+  content: "";
+  position: absolute;
+  top: -120px;
+  left: 15%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(167, 139, 250, 0.35) 0%, rgba(129, 140, 248, 0.2) 40%, transparent 70%);
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.liquid-glass-canvas::after {
+  content: "";
+  position: absolute;
+  bottom: -100px;
+  right: 15%;
+  width: 550px;
+  height: 550px;
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.3) 0%, rgba(56, 189, 248, 0.18) 45%, transparent 70%);
+  filter: blur(70px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Main Outer Liquid Slab */
+.liquid-glass-slab {
+  position: relative;
+  background: rgba(255, 255, 255, 0.58);
+  backdrop-filter: blur(36px) saturate(190%);
+  -webkit-backdrop-filter: blur(36px) saturate(190%);
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 
+    0 40px 100px -20px rgba(100, 116, 139, 0.18),
+    0 16px 40px -10px rgba(100, 116, 139, 0.08),
+    inset 0 2px 3px rgba(255, 255, 255, 0.95),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.02);
+}
+
+/* Inner Frosted Card */
+.liquid-glass-inner {
+  background: rgba(255, 255, 255, 0.70);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 
+    0 16px 36px -6px rgba(15, 23, 42, 0.04),
+    inset 0 1.5px 2px rgba(255, 255, 255, 1);
+}
+
+/* Primary Liquid Button (Violet Gel from Reference Image) */
+.liquid-pill-primary {
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #a78bfa 0%, #818cf8 50%, #6366f1 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 
+    0 12px 28px -4px rgba(129, 140, 248, 0.55),
+    inset 0 2px 2.5px rgba(255, 255, 255, 0.75),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.15);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.liquid-pill-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 18px 36px -4px rgba(129, 140, 248, 0.7),
+    inset 0 2px 2.5px rgba(255, 255, 255, 0.9);
+}
+
+.liquid-pill-primary:active {
+  transform: translateY(0) scale(0.97);
+}
+
+/* Secondary Liquid Button (Cyan/Teal Gel from Reference Image) */
+.liquid-pill-cyan {
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #38bdf8 0%, #2dd4bf 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 
+    0 12px 28px -4px rgba(45, 212, 191, 0.55),
+    inset 0 2px 2.5px rgba(255, 255, 255, 0.75),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.12);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.liquid-pill-cyan:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 18px 36px -4px rgba(45, 212, 191, 0.7),
+    inset 0 2px 2.5px rgba(255, 255, 255, 0.9);
+}
+
+.liquid-pill-cyan:active {
+  transform: translateY(0) scale(0.97);
+}
+
+/* Emerald Liquid Pill (Positive) */
+.liquid-pill-emerald {
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 
+    0 12px 26px -4px rgba(16, 185, 129, 0.5),
+    inset 0 2px 2.5px rgba(255, 255, 255, 0.75),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.12);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.liquid-pill-emerald:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 18px 36px -4px rgba(16, 185, 129, 0.65),
+    inset 0 2px 2.5px rgba(255, 255, 255, 0.9);
+}
+
+.liquid-pill-emerald:active {
+  transform: translateY(0) scale(0.97);
+}
+
+/* Amber Liquid Pill (Neutral) */
+.liquid-pill-amber {
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 
+    0 12px 26px -4px rgba(245, 158, 11, 0.5),
+    inset 0 2px 2.5px rgba(255, 255, 255, 0.75),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.12);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.liquid-pill-amber:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 18px 36px -4px rgba(245, 158, 11, 0.65),
+    inset 0 2px 2.5px rgba(255, 255, 255, 0.9);
+}
+
+.liquid-pill-amber:active {
+  transform: translateY(0) scale(0.97);
+}
+
+/* Rose Liquid Pill (Negative) */
+.liquid-pill-rose {
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #fb7185 0%, #f43f5e 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 
+    0 12px 26px -4px rgba(244, 63, 94, 0.5),
+    inset 0 2px 2.5px rgba(255, 255, 255, 0.75),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.12);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.liquid-pill-rose:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 18px 36px -4px rgba(244, 63, 94, 0.65),
+    inset 0 2px 2.5px rgba(255, 255, 255, 0.9);
+}
+
+.liquid-pill-rose:active {
+  transform: translateY(0) scale(0.97);
+}
+
+/* Neutral / Skip Liquid Pill */
+.liquid-pill-neutral {
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #334155;
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 
+    0 8px 20px -4px rgba(15, 23, 42, 0.06),
+    inset 0 1.5px 2px rgba(255, 255, 255, 1);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.liquid-pill-neutral:hover {
+  background: rgba(255, 255, 255, 0.95);
+  color: #0f172a;
+  transform: translateY(-1.5px);
+  box-shadow: 
+    0 12px 26px -4px rgba(15, 23, 42, 0.1),
+    inset 0 1.5px 2px rgba(255, 255, 255, 1);
+}
+
+.liquid-pill-neutral:active {
+  transform: translateY(0) scale(0.97);
+}
+
+/* Card Transitions */
+@keyframes liquidCardEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes liquidCardExit {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-18px) scale(0.97);
+    filter: blur(4px);
+  }
+}
+
+@keyframes liquidRevealDrawer {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-liquid-enter {
+  animation: liquidCardEnter 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-liquid-exit {
+  animation: liquidCardExit 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-liquid-reveal {
+  animation: liquidRevealDrawer 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
