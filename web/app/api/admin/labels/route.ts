@@ -4,19 +4,21 @@ import { isRequestAuthorized } from "@/lib/auth";
 import { sanitizePostgrestFilter } from "@/lib/clean";
 
 interface UnlabeledRow {
-  id: string;
+  id: string | number;
   topic_key: string;
   aspect: string;
   cleaned_text?: string;
   text: string;
-  user: string;
-  time: string;
+  handle?: string;
+  user?: string;
+  tweeted_at?: string;
+  time?: string;
   platform?: string;
   subreddit?: string;
-  qwen_prob_pos?: number;
-  qwen_prob_neg?: number;
-  qwen_prob_neu?: number;
-  "qwen2.5-3b-instruct_sentiment"?: string;
+  p_pos?: number;
+  p_neg?: number;
+  p_neu?: number;
+  sentiment?: string;
   rationale?: string;
   human_label?: string;
   label_source?: string;
@@ -38,8 +40,8 @@ export async function GET(req: NextRequest) {
   // Export mode: CSV of human-labeled rows
   if (isExport) {
     let exportQuery = supabase
-      .from("absa_tweets")
-      .select("id, aspect, cleaned_text, text, human_label, label_source, qwen2.5-3b-instruct_sentiment")
+      .from("absa_tweets_v")
+      .select("id, aspect, cleaned_text, text, human_label, label_source, sentiment")
       .not("human_label", "is", null);
 
     if (rawTopic) {
@@ -54,7 +56,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const headers = ["id", "aspect", "cleaned_text", "human_label", "label_source", "qwen2.5-3b-instruct_sentiment"];
+    const headers = ["id", "aspect", "cleaned_text", "human_label", "label_source", "model_sentiment"];
     const escapeCsv = (val: unknown) => {
       if (val === null || val === undefined) return "";
       const str = String(val).replace(/"/g, '""');
@@ -70,7 +72,7 @@ export async function GET(req: NextRequest) {
           escapeCsv(r.cleaned_text || r.text || ""),
           r.human_label || "",
           r.label_source || "",
-          r["qwen2.5-3b-instruct_sentiment"] || "",
+          r.sentiment || "",
         ].join(",")
       ),
     ];
@@ -86,8 +88,8 @@ export async function GET(req: NextRequest) {
   // Label queue retrieval mode
   try {
     let unlabQuery = supabase
-      .from("absa_tweets")
-      .select("id, topic_key, aspect, cleaned_text, text, user, time, platform, subreddit, qwen_prob_pos, qwen_prob_neg, qwen_prob_neu, qwen2.5-3b-instruct_sentiment, rationale, human_label")
+      .from("absa_tweets_v")
+      .select("id, topic_key, aspect, cleaned_text, text, handle, tweeted_at, platform, subreddit, p_pos, p_neg, p_neu, sentiment, rationale, human_label")
       .is("human_label", null)
       .limit(2000);
 
@@ -101,12 +103,12 @@ export async function GET(req: NextRequest) {
     const [{ data: pool, error: poolErr }, { count: totalLabeled }, { count: totalUnlabeled }] = await Promise.all([
       unlabQuery,
       supabase
-        .from("absa_tweets")
+        .from("absa_tweets_v")
         .select("id", { count: "exact", head: true })
         .not("human_label", "is", null)
         .then((res) => ({ count: res.count || 0 })),
       supabase
-        .from("absa_tweets")
+        .from("absa_tweets_v")
         .select("id", { count: "exact", head: true })
         .is("human_label", null)
         .then((res) => ({ count: res.count || 0 })),
@@ -122,8 +124,8 @@ export async function GET(req: NextRequest) {
     if (mode === "uncertain") {
       // Sort by lowest model confidence max(p)
       sampled.sort((a, b) => {
-        const confA = Math.max(a.qwen_prob_pos || 0, a.qwen_prob_neg || 0, a.qwen_prob_neu || 0);
-        const confB = Math.max(b.qwen_prob_pos || 0, b.qwen_prob_neg || 0, b.qwen_prob_neu || 0);
+        const confA = Math.max(a.p_pos || 0, a.p_neg || 0, a.p_neu || 0);
+        const confB = Math.max(b.p_pos || 0, b.p_neg || 0, b.p_neu || 0);
         return confA - confB;
       });
     } else {
@@ -135,21 +137,21 @@ export async function GET(req: NextRequest) {
     }
 
     const items = sampled.slice(0, limit).map((r) => ({
-      id: r.id,
+      id: String(r.id),
       topic_key: r.topic_key,
       aspect: r.aspect,
       text: r.text,
       cleaned_text: r.cleaned_text || r.text,
-      user: r.user,
-      time: r.time,
+      user: r.handle || r.user || "unknown",
+      time: r.tweeted_at || r.time || "",
       platform: r.platform || "twitter",
       subreddit: r.subreddit,
       // Store model predictions to reveal after user labels
-      model_label: r["qwen2.5-3b-instruct_sentiment"],
-      confidence: Math.max(r.qwen_prob_pos || 0, r.qwen_prob_neg || 0, r.qwen_prob_neu || 0),
-      p_pos: r.qwen_prob_pos,
-      p_neg: r.qwen_prob_neg,
-      p_neu: r.qwen_prob_neu,
+      model_label: r.sentiment || "neutral",
+      confidence: Math.max(r.p_pos || 0, r.p_neg || 0, r.p_neu || 0),
+      p_pos: r.p_pos,
+      p_neg: r.p_neg,
+      p_neu: r.p_neu,
       rationale: r.rationale,
     }));
 
@@ -186,14 +188,22 @@ export async function POST(req: NextRequest) {
     const validSource = ["random", "uncertain", "import"].includes(source) ? source : "random";
 
     const supabase = sb();
-    const { error } = await supabase
+    const isNumeric = /^\d+$/.test(id);
+    let updateQuery = supabase
       .from("absa_tweets")
       .update({
         human_label: label,
         label_source: validSource,
         labeled_at: new Date().toISOString(),
-      })
-      .eq("id", id);
+      });
+
+    if (isNumeric) {
+      updateQuery = updateQuery.or(`id.eq.${id},row_id.eq.${parseInt(id, 10)}`);
+    } else {
+      updateQuery = updateQuery.eq("id", id);
+    }
+
+    const { error } = await updateQuery;
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

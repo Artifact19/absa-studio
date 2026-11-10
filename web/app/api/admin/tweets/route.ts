@@ -98,6 +98,8 @@ export async function GET(req: NextRequest) {
         text: r.text,
         cleaned_text: r.cleaned_text,
         sentiment: (r.sentiment as SentimentLabel) || "neutral",
+        human_label: (r.human_label as SentimentLabel) || null,
+        label_source: r.label_source || null,
         p_pos,
         p_neg,
         p_neu,

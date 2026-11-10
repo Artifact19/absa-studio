@@ -337,7 +337,12 @@ export default function AdminPage() {
 
         {/* 3. Human Annotation Loop */}
         <section className="space-y-3">
-          <LabelQueue />
+          <LabelQueue
+            onLabelSubmitted={() => {
+              loadTweets(currentPage);
+              loadStats();
+            }}
+          />
         </section>
 
         {/* 4. Tweets Table */}

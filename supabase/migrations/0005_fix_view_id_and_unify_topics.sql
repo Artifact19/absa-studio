@@ -17,6 +17,16 @@ set topic_key = 'microsoft',
     aspect = 'Microsoft'
 where topic_key = 'microsoft';
 
+update public.absa_tweets
+set topic_key = 'bengal famine',
+    aspect = 'Bengal famine'
+where topic_key = 'bengal fanine';
+
+-- Ensure all rows have valid non-null string IDs
+update public.absa_tweets
+set id = row_id::text
+where id is null or id = 'nan';
+
 -- 2. Ensure absa_tweets_v always exposes a non-null id by coalescing with row_id
 drop view if exists public.absa_tweets_v cascade;
 
@@ -46,3 +56,4 @@ select coalesce(id, row_id::text) as id,
 from public.absa_tweets;
 
 grant select on public.absa_tweets_v to anon, authenticated, service_role;
+

@@ -76,6 +76,33 @@ export function TweetTable({
     }
   };
 
+  const renderHumanTruthBadge = (label?: SentimentLabel | null, source?: string | null) => {
+    if (!label) {
+      return (
+        <span className="inline-flex items-center text-[11px] text-slate-400 italic">
+          —
+        </span>
+      );
+    }
+
+    const badgeColors: Record<SentimentLabel, string> = {
+      positive: "bg-emerald-500/15 border-emerald-500/30 text-emerald-800",
+      negative: "bg-rose-500/15 border-rose-500/30 text-rose-800",
+      neutral: "bg-amber-500/15 border-amber-500/30 text-amber-800",
+    };
+
+    return (
+      <span
+        title={source ? `Annotated via ${source}` : "Human truth"}
+        className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+          badgeColors[label] || "bg-slate-500/10 text-slate-700"
+        }`}
+      >
+        <span>{label}</span>
+      </span>
+    );
+  };
+
   return (
     <div className="space-y-4 rounded-3xl glass-panel p-5 shadow-xs">
       {/* Table Controls */}
@@ -158,6 +185,7 @@ export function TweetTable({
                   <ArrowUpDown className="h-3 w-3" />
                 </button>
               </th>
+              <th className="py-3 px-4 font-semibold">Human Truth</th>
               <th className="py-3 px-4 font-semibold">
                 <button
                   type="button"
@@ -174,13 +202,13 @@ export function TweetTable({
           <tbody className="divide-y divide-white/40 text-slate-800">
             {isLoading ? (
               <tr>
-                <td colSpan={8} className="py-12 text-center text-slate-400">
+                <td colSpan={9} className="py-12 text-center text-slate-400">
                   Loading posts...
                 </td>
               </tr>
             ) : tweets.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-12 text-center text-slate-400">
+                <td colSpan={9} className="py-12 text-center text-slate-400">
                   No post records found matching current query.
                 </td>
               </tr>
@@ -233,6 +261,9 @@ export function TweetTable({
                     </td>
                     <td className="py-3 px-4 whitespace-nowrap">
                       {renderSentimentBadge(t.sentiment)}
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      {renderHumanTruthBadge(t.human_label, t.label_source)}
                     </td>
                     <td className="py-3 px-4 whitespace-nowrap font-mono tabular-nums text-slate-600 font-semibold">
                       {(t.confidence * 100).toFixed(1)}%

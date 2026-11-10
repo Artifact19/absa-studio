@@ -122,6 +122,8 @@ export interface AdminTweet {
   text: string;
   cleaned_text: string;
   sentiment: SentimentLabel;
+  human_label?: SentimentLabel | null;
+  label_source?: string | null;
   p_pos: number;
   p_neg: number;
   p_neu: number;

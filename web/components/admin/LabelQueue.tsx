@@ -31,7 +31,11 @@ interface QueueItem {
   rationale?: string;
 }
 
-export function LabelQueue() {
+interface LabelQueueProps {
+  onLabelSubmitted?: () => void;
+}
+
+export function LabelQueue({ onLabelSubmitted }: LabelQueueProps = {}) {
   const [items, setItems] = useState<QueueItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [mode, setMode] = useState<"random" | "uncertain">("random");
@@ -103,6 +107,8 @@ export function LabelQueue() {
           matched: label === currentItem.model_label,
           confidence: currentItem.confidence,
         });
+
+        onLabelSubmitted?.();
       }
     } catch (e) {
       console.error("Failed to submit label", e);
