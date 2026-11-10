@@ -117,7 +117,17 @@ export function LabelQueue({ onLabelSubmitted }: LabelQueueProps = {}) {
     }
   };
 
-  // Next post
+  // Skip post: re-queues it to the end of the active queue so it will reappear later
+  const handleSkip = () => {
+    setRevealedResult(null);
+    if (!currentItem) return;
+
+    // Push skipped candidate to the back of the queue
+    setItems((prev) => [...prev, currentItem]);
+    setCurrentIndex((prev) => prev + 1);
+  };
+
+  // Next post after submitting a label
   const handleNext = () => {
     setRevealedResult(null);
     if (currentIndex + 1 < items.length) {
@@ -152,7 +162,7 @@ export function LabelQueue({ onLabelSubmitted }: LabelQueueProps = {}) {
         handleLabel("positive");
       } else if (e.key === "s" || e.key === "S") {
         e.preventDefault();
-        handleNext();
+        handleSkip();
       }
     };
 
@@ -377,7 +387,7 @@ export function LabelQueue({ onLabelSubmitted }: LabelQueueProps = {}) {
 
               <button
                 type="button"
-                onClick={handleNext}
+                onClick={handleSkip}
                 className="flex items-center justify-center gap-1.5 px-4 py-3 rounded-2xl border border-slate-200 text-slate-600 hover:text-slate-900 font-medium text-xs hover:bg-slate-100 transition active:scale-95 cursor-pointer sm:w-auto w-full"
               >
                 <kbd className="px-1.5 py-0.5 rounded bg-slate-200 text-[10px] font-mono">S</kbd>
