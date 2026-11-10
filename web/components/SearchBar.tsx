@@ -84,24 +84,24 @@ export function SearchBar({
         }`}
       >
         <div className="relative flex-1">
-          <div className="pointer-events-none absolute left-4 sm:left-5 top-1/2 -translate-y-1/2 text-slate-400">
+          <div className="pointer-events-none absolute left-3.5 sm:left-5 top-1/2 -translate-y-1/2 text-slate-400">
             <Search className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
           <input
             type="text"
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
-            placeholder="Search any product, game, brand, or topic..."
+            placeholder="Search any brand, game, or topic..."
             disabled={isLoading}
-            className={`w-full rounded-full glass-input pl-11 sm:pl-12 pr-28 sm:pr-32 text-slate-900 placeholder:text-slate-400 focus:outline-none transition-all ${
-              compact ? "py-2.5 text-xs sm:text-sm" : "py-3.5 sm:py-4 text-sm sm:text-base"
+            className={`w-full rounded-full glass-input pl-10 sm:pl-12 pr-24 sm:pr-32 text-slate-900 placeholder:text-slate-400 focus:outline-none transition-all ${
+              compact ? "py-2 text-xs sm:text-sm" : "py-3 sm:py-4 text-xs sm:text-base"
             }`}
           />
           <button
             type="submit"
             disabled={isLoading || !topic.trim()}
             className={`absolute right-1.5 sm:right-2 top-1/2 -translate-y-1/2 rounded-full glass-pill-active font-semibold shadow-xs transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none flex items-center gap-1.5 sm:gap-2 ${
-              compact ? "px-3.5 py-1.5 text-xs" : "px-5 sm:px-6 py-2 sm:py-2.5 text-xs sm:text-sm"
+              compact ? "px-3 py-1.5 text-xs" : "px-4 sm:px-6 py-2 sm:py-2.5 text-xs sm:text-sm"
             }`}
           >
             {isLoading ? (

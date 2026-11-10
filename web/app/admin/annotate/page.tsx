@@ -351,7 +351,7 @@ export default function AnnotatePage() {
       : 0;
 
   return (
-    <div className="min-h-screen bg-[#edf1f7] liquid-glass-canvas flex flex-col justify-between py-6 px-4 sm:px-8">
+    <div className="min-h-screen bg-[#edf1f7] liquid-glass-canvas flex flex-col justify-between py-4 px-3 sm:py-6 sm:px-8">
       {/* 1. Top Glass Header */}
       <header className="max-w-5xl w-full mx-auto relative z-10 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -522,22 +522,22 @@ export default function AnnotatePage() {
         ) : (
           /* Active Tweet Slab (Liquid Glass UI Kit Style) */
           <div
-            className={`liquid-glass-slab rounded-[36px] p-8 sm:p-10 border border-white/85 space-y-8 shadow-2xl transition-all duration-200 ${
+            className={`liquid-glass-slab rounded-[24px] sm:rounded-[36px] p-4 sm:p-8 lg:p-10 border border-white/85 space-y-5 sm:space-y-8 shadow-2xl transition-all duration-200 ${
               isTransitioning ? "animate-liquid-exit" : "animate-liquid-enter"
             }`}
           >
             {/* Top Specular Pill Row */}
-            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/60 pb-6">
-              <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 border-b border-white/60 pb-4 sm:pb-6">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 {/* Target Entity Pill (Enlarged Liquid Cyan Glass Badge) */}
-                <span className="liquid-pill-cyan px-5 py-2 text-sm sm:text-base font-extrabold tracking-wide shadow-md flex items-center gap-2">
-                  <Tag className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
+                <span className="liquid-pill-cyan px-3.5 py-1.5 sm:px-5 sm:py-2 text-xs sm:text-base font-extrabold tracking-wide shadow-md flex items-center gap-1.5 sm:gap-2">
+                  <Tag className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5" />
                   <span>{currentItem.aspect}</span>
                 </span>
 
                 {/* Social Platform Pill (Enlarged Liquid Neutral Glass Badge) */}
-                <span className="liquid-pill-neutral px-4 py-2 text-sm sm:text-base font-bold flex items-center gap-2 text-slate-800 shadow-sm">
-                  <PlatformIcon platform={currentItem.platform || "twitter"} className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
+                <span className="liquid-pill-neutral px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-base font-bold flex items-center gap-1.5 sm:gap-2 text-slate-800 shadow-sm">
+                  <PlatformIcon platform={currentItem.platform || "twitter"} className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5" />
                   <span>
                     {currentItem.platform === "reddit"
                       ? currentItem.subreddit
@@ -549,19 +549,19 @@ export default function AnnotatePage() {
               </div>
 
               {/* Author & Batch Counter */}
-              <div className="flex items-center gap-3 text-xs sm:text-sm">
-                <span className="text-slate-500 font-medium">
+              <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm">
+                <span className="text-slate-500 font-medium truncate max-w-[140px] sm:max-w-none">
                   {currentItem.platform === "reddit" ? `u/${currentItem.user}` : `@${currentItem.user}`}
                 </span>
                 <span className="text-slate-300">•</span>
-                <span className="font-mono text-slate-500 text-xs font-bold bg-white/60 px-3 py-1 rounded-full border border-white/80 shadow-xs">
+                <span className="font-mono text-slate-500 text-[11px] sm:text-xs font-bold bg-white/60 px-2.5 sm:px-3 py-1 rounded-full border border-white/80 shadow-xs shrink-0">
                   Card {currentIndex + 1} of {items.length}
                 </span>
               </div>
             </div>
 
             {/* Tweet Body Sub-card (Liquid Inner Frost) */}
-            <div className="liquid-glass-inner rounded-[28px] p-6 sm:p-8 space-y-4 relative overflow-hidden">
+            <div className="liquid-glass-inner rounded-2xl sm:rounded-[28px] p-4 sm:p-8 space-y-3 sm:space-y-4 relative overflow-hidden">
               <div className="flex items-center justify-between text-[11px] text-slate-400">
                 <span className="font-mono">
                   {new Date(currentItem.time).toLocaleDateString(undefined, {
@@ -587,7 +587,7 @@ export default function AnnotatePage() {
               </div>
 
               {/* Quote Typography */}
-              <blockquote className="text-lg sm:text-2xl font-medium text-slate-900 leading-relaxed tracking-tight select-text">
+              <blockquote className="text-base sm:text-2xl font-medium text-slate-900 leading-relaxed tracking-tight select-text">
                 &ldquo;{showCleanedText ? currentItem.cleaned_text || currentItem.text : currentItem.text}&rdquo;
               </blockquote>
             </div>
@@ -595,10 +595,10 @@ export default function AnnotatePage() {
             {/* Bottom Actions: EITHER Classification Gel Pills OR Model Reveal */}
             {revealedResult ? (
               /* Animated Model Comparison Reveal Drawer */
-              <div className="liquid-glass-inner rounded-[28px] p-6 space-y-5 animate-liquid-reveal border border-white/90 bg-white/70">
-                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+              <div className="liquid-glass-inner rounded-2xl sm:rounded-[28px] p-4 sm:p-6 space-y-4 sm:space-y-5 animate-liquid-reveal border border-white/90 bg-white/70">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   {/* Comparison Duel: Human Truth VS Qwen 2.5 */}
-                  <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-3">
                     {/* Human Truth Capsule */}
                     <div className="inline-flex items-center gap-2 rounded-full bg-white/70 border border-white/90 pl-3.5 pr-1 py-1 shadow-xs">
                       <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
@@ -645,9 +645,9 @@ export default function AnnotatePage() {
                   </div>
 
                   {/* Agreement Indicator & Next Post Button */}
-                  <div className="flex flex-wrap items-center gap-3 shrink-0">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
                     <span
-                      className={`inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-full ${
+                      className={`inline-flex items-center justify-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-full ${
                         revealedResult.matched
                           ? "bg-emerald-500/15 text-emerald-800 border border-emerald-500/30"
                           : "bg-amber-500/15 text-amber-800 border border-amber-500/30"
@@ -670,10 +670,10 @@ export default function AnnotatePage() {
                     <button
                       type="button"
                       onClick={handleNext}
-                      className="liquid-pill-primary px-5 py-2.5 text-xs sm:text-sm font-bold flex items-center gap-2.5 whitespace-nowrap shrink-0 cursor-pointer shadow-lg active:scale-95"
+                      className="liquid-pill-primary px-5 py-2.5 text-xs sm:text-sm font-bold flex items-center justify-center gap-2.5 whitespace-nowrap cursor-pointer shadow-lg active:scale-95 w-full sm:w-auto"
                       autoFocus
                     >
-                      <kbd className="px-2 py-0.5 rounded-full bg-white/25 text-[10px] font-mono text-white font-semibold whitespace-nowrap">
+                      <kbd className="px-2 py-0.5 rounded-full bg-white/25 text-[10px] font-mono text-white font-semibold whitespace-nowrap hidden sm:inline-block">
                         Space
                       </kbd>
                       <span className="whitespace-nowrap">Next Post</span>
@@ -695,15 +695,15 @@ export default function AnnotatePage() {
             ) : (
               /* Classification Liquid Gel Action Buttons */
               <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3.5">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3.5">
                   {/* Negative Gel Button */}
                   <button
                     type="button"
                     disabled={isSubmitting}
                     onClick={() => handleLabel("negative")}
-                    className="liquid-pill-rose py-4 px-5 flex items-center justify-center gap-3 font-bold text-sm cursor-pointer shadow-md disabled:opacity-50"
+                    className="liquid-pill-rose py-3 sm:py-4 px-3 sm:px-5 flex items-center justify-center gap-2 sm:gap-3 font-bold text-xs sm:text-sm cursor-pointer shadow-md disabled:opacity-50"
                   >
-                    <kbd className="px-2 py-0.5 rounded-full bg-white/25 text-[11px] font-mono">1</kbd>
+                    <kbd className="px-2 py-0.5 rounded-full bg-white/25 text-[10px] sm:text-[11px] font-mono hidden xs:inline-block">1</kbd>
                     <span>Negative</span>
                   </button>
 
@@ -712,9 +712,9 @@ export default function AnnotatePage() {
                     type="button"
                     disabled={isSubmitting}
                     onClick={() => handleLabel("neutral")}
-                    className="liquid-pill-amber py-4 px-5 flex items-center justify-center gap-3 font-bold text-sm cursor-pointer shadow-md disabled:opacity-50"
+                    className="liquid-pill-amber py-3 sm:py-4 px-3 sm:px-5 flex items-center justify-center gap-2 sm:gap-3 font-bold text-xs sm:text-sm cursor-pointer shadow-md disabled:opacity-50"
                   >
-                    <kbd className="px-2 py-0.5 rounded-full bg-white/25 text-[11px] font-mono">2</kbd>
+                    <kbd className="px-2 py-0.5 rounded-full bg-white/25 text-[10px] sm:text-[11px] font-mono hidden xs:inline-block">2</kbd>
                     <span>Neutral</span>
                   </button>
 
@@ -723,9 +723,9 @@ export default function AnnotatePage() {
                     type="button"
                     disabled={isSubmitting}
                     onClick={() => handleLabel("positive")}
-                    className="liquid-pill-emerald py-4 px-5 flex items-center justify-center gap-3 font-bold text-sm cursor-pointer shadow-md disabled:opacity-50"
+                    className="liquid-pill-emerald py-3 sm:py-4 px-3 sm:px-5 flex items-center justify-center gap-2 sm:gap-3 font-bold text-xs sm:text-sm cursor-pointer shadow-md disabled:opacity-50"
                   >
-                    <kbd className="px-2 py-0.5 rounded-full bg-white/25 text-[11px] font-mono">3</kbd>
+                    <kbd className="px-2 py-0.5 rounded-full bg-white/25 text-[10px] sm:text-[11px] font-mono hidden xs:inline-block">3</kbd>
                     <span>Positive</span>
                   </button>
 
@@ -734,13 +734,13 @@ export default function AnnotatePage() {
                     type="button"
                     disabled={isSubmitting || isTransitioning}
                     onClick={handleSkip}
-                    className="liquid-pill-neutral py-4 px-5 flex items-center justify-center gap-2 font-semibold text-sm cursor-pointer shadow-sm disabled:opacity-50"
+                    className="liquid-pill-neutral py-3 sm:py-4 px-3 sm:px-5 flex items-center justify-center gap-1.5 sm:gap-2 font-semibold text-xs sm:text-sm cursor-pointer shadow-sm disabled:opacity-50"
                   >
-                    <kbd className="px-2 py-0.5 rounded-full bg-slate-200/80 text-[11px] font-mono text-slate-700">
+                    <kbd className="px-2 py-0.5 rounded-full bg-slate-200/80 text-[10px] sm:text-[11px] font-mono text-slate-700 hidden xs:inline-block">
                       S
                     </kbd>
-                    <span>Skip to Back</span>
-                    <SkipForward className="h-3.5 w-3.5 text-slate-400" />
+                    <span className="truncate">Skip</span>
+                    <SkipForward className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                   </button>
                 </div>
               </div>
@@ -751,7 +751,8 @@ export default function AnnotatePage() {
 
       {/* 3. Floating Bottom Shortcut Bar */}
       <footer className="max-w-2xl w-full mx-auto relative z-10 pt-4">
-        <div className="liquid-glass-inner rounded-full py-2 px-5 border border-white/80 flex items-center justify-center gap-4 text-[11px] text-slate-500 shadow-sm">
+        {/* Desktop Keyboard Shortcuts */}
+        <div className="hidden sm:flex liquid-glass-inner rounded-full py-2 px-5 border border-white/80 items-center justify-center gap-4 text-[11px] text-slate-500 shadow-sm">
           <span>Keyboard Shortcuts:</span>
           <span className="flex items-center gap-1 font-mono">
             <kbd className="px-1.5 py-0.5 rounded bg-slate-200 text-slate-700">1</kbd> Neg
@@ -768,6 +769,11 @@ export default function AnnotatePage() {
           <span className="flex items-center gap-1 font-mono">
             <kbd className="px-1.5 py-0.5 rounded bg-slate-200 text-slate-700">Space</kbd> Next
           </span>
+        </div>
+
+        {/* Mobile Micro-Tip */}
+        <div className="flex sm:hidden liquid-glass-inner rounded-full py-2 px-4 border border-white/80 items-center justify-center text-[11px] text-slate-500 shadow-xs text-center font-medium">
+          <span>Tap 1, 2, 3 to label • Tap Skip to send post to back</span>
         </div>
       </footer>
     </div>

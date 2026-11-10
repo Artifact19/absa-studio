@@ -168,11 +168,11 @@ export function ScrapeForm({ onJobComplete }: ScrapeFormProps) {
           />
         </div>
 
-        <div className="flex items-center justify-between pt-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
           <button
             type="submit"
             disabled={isRunning || !query.trim()}
-            className="liquid-btn-ingest px-7 py-3 text-xs sm:text-sm font-extrabold tracking-wide flex items-center gap-2.5 shadow-lg"
+            className="liquid-btn-ingest px-7 py-3 text-xs sm:text-sm font-extrabold tracking-wide flex items-center justify-center gap-2.5 shadow-lg w-full sm:w-auto cursor-pointer"
           >
             {isRunning ? (
               <>

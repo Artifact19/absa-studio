@@ -107,7 +107,7 @@ export function TweetTable({
     <div className="space-y-4 rounded-3xl glass-panel p-5 shadow-xs">
       {/* Table Controls */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <form onSubmit={handleSearchSubmit} className="relative flex-1 max-w-sm">
+        <form onSubmit={handleSearchSubmit} className="relative w-full sm:flex-1 sm:max-w-sm">
           <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
             type="text"
@@ -149,7 +149,7 @@ export function TweetTable({
 
       {/* Table Container */}
       <div className="overflow-x-auto rounded-2xl glass-panel">
-        <table className="w-full text-left text-xs">
+        <table className="w-full text-left text-xs min-w-[750px]">
           <thead className="border-b border-white/60 bg-white/40 text-slate-500">
             <tr>
               <th className="py-3 px-4 font-semibold">

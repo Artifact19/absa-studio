@@ -270,14 +270,14 @@ export default function AdminPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <button
               type="button"
               onClick={() => {
                 loadStats();
                 loadTweets(currentPage);
               }}
-              className="flex items-center gap-1.5 rounded-full glass-pill px-3.5 py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 cursor-pointer"
+              className="flex items-center gap-1.5 rounded-full glass-pill px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 cursor-pointer"
             >
               <RefreshCw className={`h-3.5 w-3.5 text-[#6c94cc] ${isLoadingStats || isLoadingTweets ? "animate-spin" : ""}`} />
               <span>Refresh</span>
@@ -285,7 +285,7 @@ export default function AdminPage() {
 
             <Link
               href="/admin/annotate"
-              className="flex items-center gap-1.5 rounded-full liquid-pill-primary px-4 py-2 text-xs font-bold cursor-pointer shadow-md"
+              className="flex items-center gap-1.5 rounded-full liquid-pill-primary px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs font-bold cursor-pointer shadow-md"
             >
               <Sparkles className="h-3.5 w-3.5 text-white" />
               <span>Annotation Studio</span>
@@ -293,7 +293,7 @@ export default function AdminPage() {
 
             <Link
               href="/admin/evaluation"
-              className="flex items-center gap-1.5 rounded-full liquid-pill-cyan px-4 py-2 text-xs font-bold cursor-pointer shadow-md"
+              className="flex items-center gap-1.5 rounded-full liquid-pill-cyan px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs font-bold cursor-pointer shadow-md"
             >
               <BarChart3 className="h-3.5 w-3.5 text-white" />
               <span>Evaluation Metrics</span>
@@ -302,7 +302,7 @@ export default function AdminPage() {
             <button
               type="button"
               onClick={() => setIsPurgeOpen(true)}
-              className="flex items-center gap-1.5 rounded-full glass-pill px-3.5 py-2 text-xs font-semibold text-rose-700 hover:text-rose-900 cursor-pointer"
+              className="flex items-center gap-1.5 rounded-full glass-pill px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs font-semibold text-rose-700 hover:text-rose-900 cursor-pointer"
             >
               <Trash2 className="h-3.5 w-3.5" />
               <span>Purge Data</span>
@@ -314,7 +314,7 @@ export default function AdminPage() {
                 document.cookie = "absa_admin_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
                 setIsAuthenticated(false);
               }}
-              className="flex items-center gap-1.5 rounded-full glass-pill px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 cursor-pointer"
+              className="flex items-center gap-1.5 rounded-full glass-pill px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 cursor-pointer"
             >
               <LogOut className="h-3.5 w-3.5" />
               <span>Lock</span>

@@ -225,33 +225,33 @@ export function PurgeDialog({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-4 animate-in fade-in duration-200">
-      <div className="relative w-full max-w-xl rounded-[32px] liquid-glass-slab p-6 sm:p-8 border border-white/85 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-md p-3 sm:p-4 animate-in fade-in duration-200">
+      <div className="relative w-full max-w-xl rounded-[24px] sm:rounded-[32px] liquid-glass-slab p-4 sm:p-8 border border-white/85 shadow-2xl space-y-5 sm:space-y-6 max-h-[90vh] overflow-y-auto">
         {/* Close Button */}
         <button
           type="button"
           onClick={onClose}
           disabled={isExecuting}
-          className="absolute right-5 top-5 p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-white/60 transition cursor-pointer"
+          className="absolute right-4 top-4 sm:right-5 sm:top-5 p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-white/60 transition cursor-pointer"
         >
           <X className="h-4 w-4" />
         </button>
 
         {/* Modal Header */}
-        <div className="space-y-1.5">
-          <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 bg-rose-500/15 border border-rose-500/30 text-rose-700 text-xs font-black tracking-wide">
-            <ShieldAlert className="h-4 w-4 text-rose-600" />
+        <div className="space-y-1.5 pr-8">
+          <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full px-2.5 sm:px-3 py-1 bg-rose-500/15 border border-rose-500/30 text-rose-700 text-[10px] sm:text-xs font-black tracking-wide">
+            <ShieldAlert className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-600" />
             <span>STRICT DATA PURGE PROTOCOL</span>
           </div>
-          <h2 className="text-xl font-black text-slate-900 tracking-tight">
+          <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
             Permanent Database Pruning
           </h2>
         </div>
 
         {/* 3-Stage Progress Stepper */}
-        <div className="grid grid-cols-3 gap-2 border-y border-white/60 py-3">
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 border-y border-white/60 py-2.5 sm:py-3">
           <div
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition ${
+            className={`flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-bold transition ${
               stage === 1
                 ? "liquid-pill-primary text-white"
                 : stage > 1
@@ -259,14 +259,15 @@ export function PurgeDialog({
                 : "bg-white/50 text-slate-400"
             }`}
           >
-            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-black/15 text-[10px]">
+            <span className="flex h-3.5 w-3.5 sm:h-4 sm:w-4 items-center justify-center rounded-full bg-black/15 text-[9px] sm:text-[10px] shrink-0">
               1
             </span>
-            <span className="truncate">Scope & Impact</span>
+            <span className="truncate hidden xs:inline">Scope & Impact</span>
+            <span className="truncate xs:hidden">Scope</span>
           </div>
 
           <div
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition ${
+            className={`flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-bold transition ${
               stage === 2
                 ? "liquid-pill-primary text-white"
                 : stage > 2
@@ -274,23 +275,25 @@ export function PurgeDialog({
                 : "bg-white/50 text-slate-400"
             }`}
           >
-            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-black/15 text-[10px]">
+            <span className="flex h-3.5 w-3.5 sm:h-4 sm:w-4 items-center justify-center rounded-full bg-black/15 text-[9px] sm:text-[10px] shrink-0">
               2
             </span>
-            <span className="truncate">Confirmation</span>
+            <span className="truncate hidden xs:inline">Confirmation</span>
+            <span className="truncate xs:hidden">Confirm</span>
           </div>
 
           <div
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition ${
+            className={`flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-bold transition ${
               stage === 3
                 ? "liquid-pill-rose text-white"
                 : "bg-white/50 text-slate-400"
             }`}
           >
-            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-black/15 text-[10px]">
+            <span className="flex h-3.5 w-3.5 sm:h-4 sm:w-4 items-center justify-center rounded-full bg-black/15 text-[9px] sm:text-[10px] shrink-0">
               3
             </span>
-            <span className="truncate">Master Key</span>
+            <span className="truncate hidden xs:inline">Master Key</span>
+            <span className="truncate xs:hidden">Key</span>
           </div>
         </div>
 

@@ -192,7 +192,7 @@ export default function HomePage() {
           isResultsView ? "sticky top-0 z-40 shadow-xs" : ""
         }`}
       >
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-3 py-2.5 sm:px-6 sm:py-3">
           <Link href="/" className="flex items-center gap-2.5 font-extrabold tracking-tight text-slate-900">
             <div className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full glass-pill p-1 shadow-2xs">
               <Image
@@ -231,7 +231,7 @@ export default function HomePage() {
       </header>
 
       {/* Main Content Area */}
-      <main className="mx-auto max-w-6xl px-4 py-4 sm:py-6 sm:px-6">
+      <main className="mx-auto max-w-6xl px-3 py-3 sm:py-6 sm:px-6">
         {/* Search Bar - Centers in hero mode, shrinks in compact results mode */}
         <SearchBar
           initialTopic={analyzedData?.topic || ""}

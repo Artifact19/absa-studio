@@ -29,7 +29,7 @@ export function EvidenceList({ positiveEvidence, negativeEvidence }: EvidenceLis
   return (
     <div className="space-y-4">
       {/* Platform Filter Segmented Tabs */}
-      <div className="flex items-center gap-1.5 p-1 rounded-full glass-track max-w-fit">
+      <div className="flex items-center gap-1.5 p-1 rounded-full glass-track max-w-full overflow-x-auto no-scrollbar sm:max-w-fit">
         <button
           type="button"
           onClick={() => setPlatformFilter("all")}

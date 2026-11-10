@@ -22,7 +22,7 @@ export function TimeWindowChips({
 
   return (
     <div
-      className="inline-flex flex-wrap items-center gap-1 p-1 rounded-full glass-track max-w-full shadow-xs"
+      className="inline-flex items-center gap-1 p-1 rounded-full glass-track max-w-full overflow-x-auto no-scrollbar sm:flex-wrap shadow-xs"
       role="tablist"
       aria-label="Time window selector"
     >

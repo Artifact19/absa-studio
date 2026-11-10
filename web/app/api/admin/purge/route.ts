@@ -274,3 +274,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Purge execution failed" }, { status: 500 });
   }
 }
+
