@@ -168,11 +168,11 @@ export function ScrapeForm({ onJobComplete }: ScrapeFormProps) {
           />
         </div>
 
-        <div className="flex items-center justify-between pt-1">
+        <div className="flex items-center justify-between pt-2">
           <button
             type="submit"
             disabled={isRunning || !query.trim()}
-            className="flex items-center gap-2 rounded-full glass-pill-active px-6 py-2.5 text-xs font-semibold shadow-xs disabled:opacity-50 disabled:pointer-events-none transition-all cursor-pointer"
+            className="liquid-btn-ingest px-7 py-3 text-xs sm:text-sm font-extrabold tracking-wide flex items-center gap-2.5 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed shadow-lg"
           >
             {isRunning ? (
               <>
@@ -181,7 +181,7 @@ export function ScrapeForm({ onJobComplete }: ScrapeFormProps) {
               </>
             ) : (
               <>
-                <Play className="h-4 w-4" />
+                <Play className="h-4 w-4 fill-white text-white" />
                 <span>Start Ingestion Job</span>
               </>
             )}
