@@ -1,6 +1,6 @@
 import os
 os.environ["GRADIO_SSR_MODE"] = "false"
-import json
+import logging
 import threading
 import re
 import hmac
@@ -24,6 +24,10 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
 
+import absa_pipeline as ap
+
+logging.basicConfig(level=logging.INFO)
+
 MODEL_ID = os.environ.get("MODEL_ID", "Qwen/Qwen2.5-3B-Instruct")
 API_SECRET = os.environ.get("API_SECRET", "")
 USE_GPU = torch.cuda.is_available() or bool(os.environ.get("SPACES_ZERO_GPU"))
@@ -42,8 +46,10 @@ if USE_GPU and not hasattr(model, "hf_device_map"):
     model.to("cuda")
 model.eval()
 
-# Label verbalizer constants
-LABELS = ["positive", "negative", "neutral"]
+# Hybrid classifier: calibrated logit verbalizer -> gated CoT -> label-conditioned rationale.
+ENGINE = ap.AbsaEngine(model, tok)
+CONFIG_PATH = os.environ.get("PIPELINE_CONFIG", os.path.join(os.path.dirname(os.path.abspath(__file__)), "pipeline_config.json"))
+CONFIG = ap.PipelineConfig.load(CONFIG_PATH)
 
 def verify(x_api_key: Optional[str] = Header(None)):
     if API_SECRET:
@@ -76,9 +82,15 @@ class ClassifyItem(BaseModel):
     prob_neu: float
     confidence: float
     rationale: Optional[str] = None
+    route: Optional[str] = None  # "logit" (stage 1 only) or "cot" (gated to chain-of-thought)
+    cues: List[str] = []
 
 class ClassifyResp(BaseModel):
     results: List[ClassifyItem]
+
+class RawReq(BaseModel):
+    texts: List[str] = Field(..., max_length=16)
+    target: str
 
 class Evidence(BaseModel):
     user: str
@@ -109,71 +121,13 @@ def _extract_llm(text: str) -> str:
     ent = tok.decode(out[0][inp["input_ids"].shape[1]:], skip_special_tokens=True)
     return ent.strip().strip('."\'')
 
-COT_SYS = (
-    "You are an aspect-based sentiment reasoning engine. Analyze the author's authentic attitude strictly toward the TARGET in the post (from X or Reddit).\n"
-    "Core Rules (Domain-Agnostic):\n"
-    "1. TARGET FOCUS: Evaluate sentiment ONLY toward TARGET. Hostility or praise toward bystanders, rivals, or external factors is NOT toward TARGET.\n"
-    "2. SARCASM: Sarcastic praise is negative. Sarcastic self-deprecation or hyperbolic praise is positive.\n"
-    "3. SLANG & PROFANITY: Profanity used for excitement, fan loyalty, or attacking bystanders (e.g. 'I'd fight anyone for [target]', 'this is f***ing incredible') is POSITIVE toward TARGET.\n"
-    "4. CONFLICTING CLAUSES: When a post contains mixed opinions, determine whether the author's net stance toward the TARGET itself is positive, negative, or neutral.\n"
-    "Output format:\n"
-    "Reasoning: <one concise sentence analyzing author's stance toward TARGET, decoding any slang or sarcasm>\n"
-    "Verdict: <positive | negative | neutral>"
-)
-
 @spaces.GPU(duration=60)
 def _classify(texts: List[str], target: str) -> List[dict]:
-    prompts = [chat(COT_SYS, f"Target: {target}\nPost: {t}\nReasoning:") for t in texts]
-    enc = tok(prompts, return_tensors="pt", padding=True, truncation=True, max_length=512).to(model.device)
-    
-    with torch.no_grad():
-        out_ids = model.generate(
-            **enc,
-            max_new_tokens=45,
-            do_sample=False,
-            pad_token_id=tok.pad_token_id,
-        )
+    return ENGINE.classify(texts, target, CONFIG)
 
-    results = []
-    input_len = enc["input_ids"].shape[1]
-
-    for i in range(len(texts)):
-        gen_tokens = out_ids[i][input_len:]
-        gen_text = tok.decode(gen_tokens, skip_special_tokens=True).strip()
-
-        reasoning = ""
-        verdict = "neutral"
-
-        if "Verdict:" in gen_text:
-            parts = gen_text.split("Verdict:", 1)
-            reasoning = parts[0].replace("Reasoning:", "").strip()
-            v_raw = parts[1].strip().lower()
-        else:
-            reasoning = gen_text
-            v_raw = gen_text.lower()
-
-        if "positive" in v_raw:
-            verdict = "positive"
-            prob_pos, prob_neg, prob_neu = 0.92, 0.04, 0.04
-            conf = 0.92
-        elif "negative" in v_raw:
-            verdict = "negative"
-            prob_pos, prob_neg, prob_neu = 0.04, 0.92, 0.04
-            conf = 0.92
-        else:
-            verdict = "neutral"
-            prob_pos, prob_neg, prob_neu = 0.10, 0.10, 0.80
-            conf = 0.80
-
-        results.append({
-            "label": verdict,
-            "prob_pos": prob_pos,
-            "prob_neg": prob_neg,
-            "prob_neu": prob_neu,
-            "confidence": conf,
-            "rationale": reasoning or None,
-        })
-    return results
+@spaces.GPU(duration=120)
+def _raw_scores(texts: List[str], target: str) -> List[dict]:
+    return ENGINE.raw_scores(texts, target, CONFIG)
 
 @spaces.GPU(duration=90)
 def _synth_stream(prompt: str):
@@ -200,7 +154,7 @@ api = FastAPI(title="ABSA Inference", version="1.0.0")
 
 @api.get("/health")
 def health():
-    return {"ok": True, "model": MODEL_ID}
+    return {"ok": True, "model": MODEL_ID, "pipeline": ap.PIPELINE_VERSION}
 
 @api.post("/extract-target", response_model=ExtractResp, dependencies=[Depends(verify)])
 def extract_target(req: ExtractReq):
@@ -216,6 +170,12 @@ def classify_batch(req: ClassifyReq):
     items = _classify(req.texts, req.target)
     out = [ClassifyItem(**item) for item in items]
     return ClassifyResp(results=out)
+
+@api.post("/eval/raw-scores", dependencies=[Depends(verify)])
+def eval_raw_scores(req: RawReq):
+    """Benchmark support: every stage-1 variant plus CoT on all posts (see benchmark.py)."""
+    results = _raw_scores(req.texts, req.target) if req.texts else []
+    return {"pipeline_version": ap.PIPELINE_VERSION, "model": MODEL_ID, "results": results}
 
 INSIGHT_SYS = """You write executive sentiment briefs for busy readers. Output EXACTLY this markdown, nothing else:
 
@@ -257,7 +217,8 @@ def demo_classify(text: str, target: str):
         return "Please provide both text and target."
     res = _classify([text], target)[0]
     rationale = f"\nReasoning: {res['rationale']}" if res.get("rationale") else ""
-    return f"Verdict: {res['label'].capitalize()} (Confidence: {res['confidence']:.0%}){rationale}"
+    route = "chain-of-thought" if res.get("route") == "cot" else "logit verbalizer"
+    return f"Verdict: {res['label'].capitalize()} (Confidence: {res['confidence']:.0%}, via {route}){rationale}"
 
 with gr.Blocks(title="ABSA Studio Inference") as demo:
     gr.Markdown("# Target-Oriented ABSA Studio Inference API\nFastAPI REST endpoints available at `/docs`.")

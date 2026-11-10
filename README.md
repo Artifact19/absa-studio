@@ -107,6 +107,18 @@ Presents the top 5 positive and top 5 negative reference posts ordered by model 
 
 ---
 
+## Sentiment Classification Pipeline
+
+`/classify-batch` runs a three-stage hybrid built on `Qwen2.5-3B-Instruct` with no fine-tuning (`hf-space/absa_pipeline.py`):
+
+1. **Calibrated logit verbalizer (every post).** One forward pass reads the next-token logits of the label words (`logsumexp` over surface variants). A fitted temperature and per-class bias turn them into calibrated `p_pos / p_neg / p_neu`.
+2. **Gated chain-of-thought (some posts).** CoT runs only when the stage-1 margin is small, or when a polar label meets informal cues (profanity, slang, sarcasm markers, contrast clauses). The CoT verdict is read from logits after a forced `Verdict:` and mixed log-linearly with stage 1. Confident neutral labels are never sent to CoT, because reasoning-first generation in small models tends to invent emotion in factual posts.
+3. **Label-conditioned rationale.** A one-sentence explanation is generated after the decision (or the CoT reasoning is reused when it agrees), so evidence cards always have a rationale that cannot change the label.
+
+Calibration, gate thresholds and the stage-1 prompt variant are set in `hf-space/pipeline_config.json` and fitted with the benchmark below.
+
+---
+
 ## Repository Structure
 
 ```
@@ -120,6 +132,9 @@ absa-studio/
 ├── hf-space/                             # Hugging Face inference deployment
 │   ├── README.md                         # Gradio Space configuration
 │   ├── app.py                            # FastAPI server with Qwen2.5-3B
+│   ├── absa_pipeline.py                  # Hybrid classifier: verbalizer, gated CoT, rationales
+│   ├── pipeline_config.json              # Calibration and gate thresholds (fitted by benchmark)
+│   ├── benchmark.py                      # Offline evaluation against annotated posts
 │   └── requirements.txt                  # Model runtime dependencies
 └── supabase/
     └── migrations/
@@ -173,6 +188,19 @@ npm run dev
 ```
 Navigate to `http://localhost:3000` to access the interface.
 
+### 6. Classifier Benchmark
+`hf-space/benchmark.py` scores an annotated file (CSV/TSV/JSON/JSONL with text, target and `positive`/`negative`/`neutral` label columns) and compares Approach A, the legacy CoT, every stage-1 prompt variant and the hybrid. It reports accuracy, Cohen's κ, linearly weighted κ, per-class recall, McNemar tests and bootstrap intervals. Tuned systems are evaluated with nested cross-validation.
+
+Score through the deployed Space (identical to production numerics):
+```bash
+python hf-space/benchmark.py --data annotated.csv --backend remote --url https://your-space.hf.space --key your_hf_shared_secret
+```
+Or locally (`--quant 4bit` for GPUs under 8 GB; scores then differ slightly from production fp16):
+```bash
+python hf-space/benchmark.py --data annotated.csv --quant 4bit
+```
+Raw model scores are cached in `benchmark_results/`, so re-analysis is offline and takes seconds. Add `--write-config hf-space/pipeline_config.json` to save the configuration fitted on all rows, then re-upload it to the Space.
+
 ---
 
 ## Cloud Deployment
@@ -183,7 +211,7 @@ Navigate to `http://localhost:3000` to access the interface.
 
 ### 2. Model Service Deployment (Hugging Face)
 1. Create a new Space with Gradio SDK on ZeroGPU hardware.
-2. Upload the files from `hf-space/`: `README.md`, `requirements.txt`, and `app.py`.
+2. Upload the files from `hf-space/`: `README.md`, `requirements.txt`, `app.py`, `absa_pipeline.py`, and `pipeline_config.json`.
 3. In Space Settings under Variables and Secrets, add `API_SECRET`.
 
 ### 3. Frontend Deployment (Vercel)

@@ -1,0 +1,17 @@
+{
+  "_comment": "Untuned defaults. Run `python benchmark.py --data <annotated file> --write-config pipeline_config.json` to fit calibration and gate thresholds on labelled data.",
+  "stage1_variant": "v2",
+  "scale": 1.0,
+  "bias": {"positive": 0.0, "negative": 0.0, "neutral": 0.0},
+  "cot_scale": 1.0,
+  "cot_bias": {"positive": 0.0, "negative": 0.0, "neutral": 0.0},
+  "gate_margin": 0.25,
+  "gate_cues": ["profanity", "slang", "sarcasm", "affect_emoji", "emphasis", "contrast", "defense"],
+  "neutral_guard": 0.5,
+  "cot_can_neutralize": true,
+  "cot_weight": 0.5,
+  "max_post_tokens": 320,
+  "cot_max_new_tokens": 96,
+  "rationale_max_new_tokens": 40,
+  "generate_rationales": true
+}
