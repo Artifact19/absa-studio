@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
 
     const csvLines = [
       headers.join(","),
-      ...((rows as UnlabeledRow[]) || []).map((r) =>
+      ...((rows as unknown as UnlabeledRow[]) || []).map((r) =>
         [
           r.id,
           escapeCsv(r.aspect || ""),

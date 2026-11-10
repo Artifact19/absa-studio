@@ -8,7 +8,7 @@ import { ScrapeForm } from "@/components/admin/ScrapeForm";
 import { PurgeDialog } from "@/components/admin/PurgeDialog";
 import { LabelQueue } from "@/components/admin/LabelQueue";
 import { AdminStats, AdminTweet } from "@/lib/types";
-import { Lock, KeyRound, ShieldAlert, Trash2, ArrowLeft, RefreshCw, LogOut, Loader2 } from "lucide-react";
+import { Lock, KeyRound, ShieldAlert, Trash2, ArrowLeft, RefreshCw, LogOut, Loader2, ChevronDown } from "lucide-react";
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -37,6 +37,9 @@ export default function AdminPage() {
   // Purge Dialog
   const [isPurgeOpen, setIsPurgeOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+
+  // Collapse/Expand Tweet Records Table
+  const [isTweetsTableCollapsed, setIsTweetsTableCollapsed] = useState(false);
 
   // Load Admin Stats
   const loadStats = useCallback(async () => {
@@ -339,28 +342,45 @@ export default function AdminPage() {
 
         {/* 4. Tweets Table */}
         <section className="space-y-3">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-            Tweet Records & Classifications
-          </h2>
-          <TweetTable
-            tweets={tweets}
-            total={totalTweets}
-            page={currentPage}
-            pageSize={50}
-            totalPages={totalPages}
-            isLoading={isLoadingTweets}
-            topicFilter={topicFilter}
-            sentimentFilter={sentimentFilter}
-            searchQuery={searchQuery}
-            sortBy={sortBy}
-            onPageChange={(p) => loadTweets(p)}
-            onFilterChange={(newFilters) => {
-              if (newFilters.topic !== undefined) setTopicFilter(newFilters.topic);
-              if (newFilters.sentiment !== undefined) setSentimentFilter(newFilters.sentiment);
-              if (newFilters.q !== undefined) setSearchQuery(newFilters.q);
-              if (newFilters.sort !== undefined) setSortBy(newFilters.sort);
-            }}
-          />
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Tweet Records & Classifications ({totalTweets.toLocaleString()} total)
+            </h2>
+            <button
+              type="button"
+              onClick={() => setIsTweetsTableCollapsed((prev) => !prev)}
+              className="flex items-center gap-1.5 rounded-full glass-pill px-3 py-1 text-xs font-semibold text-slate-700 hover:text-slate-900 transition cursor-pointer"
+            >
+              <span>{isTweetsTableCollapsed ? "Expand Records" : "Collapse Records"}</span>
+              <ChevronDown
+                className={`h-3.5 w-3.5 text-slate-500 transition-transform duration-200 ${
+                  isTweetsTableCollapsed ? "" : "rotate-180"
+                }`}
+              />
+            </button>
+          </div>
+
+          {!isTweetsTableCollapsed && (
+            <TweetTable
+              tweets={tweets}
+              total={totalTweets}
+              page={currentPage}
+              pageSize={50}
+              totalPages={totalPages}
+              isLoading={isLoadingTweets}
+              topicFilter={topicFilter}
+              sentimentFilter={sentimentFilter}
+              searchQuery={searchQuery}
+              sortBy={sortBy}
+              onPageChange={(p) => loadTweets(p)}
+              onFilterChange={(newFilters) => {
+                if (newFilters.topic !== undefined) setTopicFilter(newFilters.topic);
+                if (newFilters.sentiment !== undefined) setSentimentFilter(newFilters.sentiment);
+                if (newFilters.q !== undefined) setSearchQuery(newFilters.q);
+                if (newFilters.sort !== undefined) setSortBy(newFilters.sort);
+              }}
+            />
+          )}
         </section>
       </div>
 
